@@ -20,7 +20,7 @@
     "registry:validate": "bun run scripts/validate-registry.ts",
     "registry:scan": "bun run scripts/scan.ts",
     "registry:ensure": "bun run scripts/scan.ts --if-missing",
-    "build:generated": "vite build"
+    "build:generated": "vite build",
     "security:targets": "bun run scripts/plugin-security/targets.ts",
     "security:scan": "bun run scripts/plugin-security/scan.ts",
     "security:publish": "bun run scripts/plugin-security/publish.ts",
