@@ -5,7 +5,15 @@ import viteReact from "@vitejs/plugin-react"
 import { nitro } from "nitro/vite"
 import { defineConfig } from "vite"
 
+// configure-pages reports "/" or "/<repo>"; Vite wants a trailing slash.
+const RAW_BASE = process.env.VITE_BASE_PATH || "/"
+const BASE = RAW_BASE.endsWith("/") ? RAW_BASE : `${RAW_BASE}/`
+
 const config = defineConfig({
+  // Where the site is served from: "/" for the canonical custom domain, and
+  // "/<repo>/" for a fork's GitHub Pages project site. The deploy workflow
+  // fills this in from actions/configure-pages; see src/lib/site.ts.
+  base: BASE,
   resolve: { tsconfigPaths: true },
   plugins: [
     devtools(),
@@ -22,7 +30,7 @@ const config = defineConfig({
         crawlLinks: true,
         failOnError: true,
         ignore: ["/404.html"],
-        routes: ["/", "/submit", "/api/plugins"],
+        routes: [BASE, `${BASE}submit`, `${BASE}api/plugins`],
       },
     }),
   ],

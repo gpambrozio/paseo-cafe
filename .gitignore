@@ -17,6 +17,7 @@ data/plugins/
 public/og/
 public/sitemap.xml
 public/robots.txt
+public/plugins/
 
 # typescript
 *.tsbuildinfo
