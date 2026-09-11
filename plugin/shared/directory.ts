@@ -13,7 +13,6 @@ import {
   CATALOG_HEALTH_LABELS,
   CATALOG_PLATFORM_LABELS,
   type CatalogCategory,
-  type CatalogDateField,
   type CatalogHealthCheck,
   compareCatalogAddedAt,
   formatCatalogDateForReader,
@@ -114,18 +113,8 @@ export const DIRECTORY_SORT_MODES = [
 export const DIRECTORY_ADDED_AT_LABEL = CATALOG_ADDED_AT_LABEL
 export const compareDirectoryAddedAt = compareCatalogAddedAt
 
-export type DirectoryDateField = CatalogDateField
 export const getDirectoryDateBadge = getCatalogDateBadge
 export const formatDirectoryDate = formatCatalogDateForReader
-
-/** The date a row should show while this sort is active, or none. */
-export function directorySortDateField(
-  sort: DirectoryBrowseSettings["sort"]
-): DirectoryDateField | undefined {
-  if (sort === "recently-added") return "added"
-  if (sort === "recent") return "updated"
-  return undefined
-}
 
 export const DIRECTORY_STATUS_FILTERS = [
   "all",

@@ -25,7 +25,6 @@ import {
   directoryInstallRpc,
   directoryListRpc,
   directorySettings,
-  directorySortDateField,
   directoryUpdateRpc,
   directoryUpdateStatusRpc,
   findInstallations,
@@ -1328,7 +1327,6 @@ export function DirectorySurface({ theme, layout }: PluginSurfaceProps) {
                       {recentHighlights.map((item) => (
                         <PluginRow
                           key={`recent-${item.id}`}
-                          dateField="updated"
                           entry={item}
                           theme={theme}
                           installations={
@@ -1358,7 +1356,7 @@ export function DirectorySurface({ theme, layout }: PluginSurfaceProps) {
                       {recentlyAddedHighlights.map((item) => (
                         <PluginRow
                           key={`recently-added-${item.id}`}
-                          dateField="added"
+                          showAddedDate
                           entry={item}
                           theme={theme}
                           installations={
@@ -1391,7 +1389,7 @@ export function DirectorySurface({ theme, layout }: PluginSurfaceProps) {
             theme={theme}
             installations={installationByEntryId.get(item.id) ?? []}
             compact={layout.compact}
-            dateField={directorySortDateField(sortMode)}
+            showAddedDate={sortMode === "recently-added"}
             onPress={() => openPlugin(item)}
           />
         )}
