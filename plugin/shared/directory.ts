@@ -16,7 +16,7 @@ import {
   type CatalogDateField,
   type CatalogHealthCheck,
   compareCatalogAddedAt,
-  formatCatalogDate,
+  formatCatalogDateForReader,
   getCatalogDateBadge,
   getCatalogInstallCommand,
   getCatalogInstallRef,
@@ -116,7 +116,7 @@ export const compareDirectoryAddedAt = compareCatalogAddedAt
 
 export type DirectoryDateField = CatalogDateField
 export const getDirectoryDateBadge = getCatalogDateBadge
-export const formatDirectoryDate = formatCatalogDate
+export const formatDirectoryDate = formatCatalogDateForReader
 
 /** The date a row should show while this sort is active, or none. */
 export function directorySortDateField(
