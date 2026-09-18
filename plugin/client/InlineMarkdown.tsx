@@ -1,14 +1,18 @@
 import type { PluginTheme } from "@getpaseo/plugin"
 import { useMemo } from "react"
 import { Text, type TextStyle } from "react-native"
+import type { InlineMarkdownTextNode } from "../shared/inline-markdown"
 import { parseInlineMarkdown } from "../shared/inline-markdown"
 import { openExternal } from "./web"
 
 interface InlineMarkdownProps {
   text: string
   theme: PluginTheme
-  /** Base text style; segment styling layers on top of it. */
-  style: TextStyle
+  /**
+   * Base text style; node styling layers on top of it. Omit it when this
+   * sits inside a styled Text, which React Native already inherits from.
+   */
+  style?: TextStyle
   /**
    * "text" keeps link labels as unpressable text, for rows that are
    * themselves one big Pressable — there, a nested press target would
@@ -22,7 +26,7 @@ interface InlineMarkdownProps {
  * Renders the inline markdown authors write in catalog text — links, bold,
  * italic, code — instead of printing its syntax. Shares its parse with the
  * paseo.cafe website (../shared/inline-markdown.ts), which renders the same
- * segments as DOM nodes in src/components/inline-markdown.tsx.
+ * nodes as DOM elements in src/components/inline-markdown.tsx.
  */
 export function InlineMarkdown({
   text,
@@ -31,7 +35,7 @@ export function InlineMarkdown({
   links = "press",
   numberOfLines,
 }: InlineMarkdownProps) {
-  const segments = useMemo(() => parseInlineMarkdown(text), [text])
+  const nodes = useMemo(() => parseInlineMarkdown(text), [text])
   const styles = useMemo(
     () => ({
       link: {
@@ -45,27 +49,46 @@ export function InlineMarkdown({
     [theme]
   )
 
+  const runStyle = (node: InlineMarkdownTextNode) => [
+    node.code ? styles.code : null,
+    node.strong ? styles.strong : null,
+    node.emphasis ? styles.emphasis : null,
+  ]
+
   return (
     <Text style={style} numberOfLines={numberOfLines}>
-      {segments.map((segment, index) => {
-        const href = links === "press" ? segment.href : undefined
-        return (
+      {nodes.map((node, index) =>
+        node.type === "text" ? (
           <Text
-            // biome-ignore lint/suspicious/noArrayIndexKey: Segments are positional — the same text can legitimately repeat.
+            // biome-ignore lint/suspicious/noArrayIndexKey: Nodes are positional — the same text can legitimately repeat.
             key={index}
-            style={[
-              segment.code ? styles.code : null,
-              segment.strong ? styles.strong : null,
-              segment.emphasis ? styles.emphasis : null,
-              href ? styles.link : null,
-            ]}
-            accessibilityRole={href ? "link" : undefined}
-            onPress={href ? () => openExternal(href) : undefined}
+            style={runStyle(node)}
           >
-            {segment.text}
+            {node.text}
+          </Text>
+        ) : (
+          // One press target per link, however many styled runs its label holds.
+          <Text
+            // biome-ignore lint/suspicious/noArrayIndexKey: Nodes are positional — the same text can legitimately repeat.
+            key={index}
+            style={links === "press" ? styles.link : null}
+            accessibilityRole={links === "press" ? "link" : undefined}
+            onPress={
+              links === "press" ? () => openExternal(node.href) : undefined
+            }
+          >
+            {node.children.map((child, childIndex) => (
+              <Text
+                // biome-ignore lint/suspicious/noArrayIndexKey: Nodes are positional — the same text can legitimately repeat.
+                key={childIndex}
+                style={runStyle(child)}
+              >
+                {child.text}
+              </Text>
+            ))}
           </Text>
         )
-      })}
+      )}
     </Text>
   )
 }

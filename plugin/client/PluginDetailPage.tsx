@@ -688,7 +688,8 @@ export function PluginDetailPage({
             ) : null}
             {entry.caveats.map((caveat) => (
               <Text key={caveat} style={styles.caveatLine}>
-                ⚠ {caveat}
+                {"⚠ "}
+                <InlineMarkdown text={caveat} theme={theme} />
               </Text>
             ))}
             {limitationsText ? (
@@ -1195,7 +1196,8 @@ export function PluginDetailPage({
             ) : null}
             {entry.caveats.map((caveat) => (
               <Text key={caveat} style={styles.caveatLine}>
-                ⚠ {caveat}
+                {"⚠ "}
+                <InlineMarkdown text={caveat} theme={theme} />
               </Text>
             ))}
             {limitationsText ? (

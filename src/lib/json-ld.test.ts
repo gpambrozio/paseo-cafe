@@ -67,6 +67,16 @@ describe("pluginJsonLd", () => {
     expect(ld).not.toHaveProperty("dateModified")
   })
 
+  it("publishes the description as plain text, not markdown", () => {
+    const ld = pluginJsonLd({
+      ...basePlugin,
+      description:
+        "A [Paseo](https://paseo.sh) plugin with **bold** and `code`.",
+    })
+
+    expect(ld.description).toBe("A Paseo plugin with bold and code.")
+  })
+
   it("falls back to the generated OG image when there are no screenshots", () => {
     const ld = pluginJsonLd(basePlugin)
     expect(ld.image).toContain("/og/subagent-activity.png")

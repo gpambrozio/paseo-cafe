@@ -9,6 +9,7 @@ import {
 } from "@/lib/plugin-schema"
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site"
 import {
+  CATALOG_DESCRIPTION_MAX_LENGTH,
   CATALOG_VERSION_MAX_LENGTH,
   isValidCatalogPackage,
 } from "../../plugin/shared/catalog"
@@ -41,7 +42,7 @@ export const directoryPluginSchema = z.object({
   npm: pluginNpmMetadataSchema.optional(),
   url: httpUrlSchema.max(2_048),
   name: z.string().max(200),
-  description: z.string().max(1_000),
+  description: z.string().max(CATALOG_DESCRIPTION_MAX_LENGTH),
   version: z.string().max(CATALOG_VERSION_MAX_LENGTH).optional(),
   author: z.string().max(200).optional(),
   license: z.string().max(100).optional(),
@@ -150,7 +151,10 @@ export function projectPluginForDirectory(
     ...(plugin.package ? { package: plugin.package } : {}),
     ...(plugin.npm ? { npm: plugin.npm } : {}),
     name: boundedString(plugin.name, 200),
-    description: boundedString(plugin.description, 1_000),
+    description: boundedString(
+      plugin.description,
+      CATALOG_DESCRIPTION_MAX_LENGTH
+    ),
     categories: [],
     platforms: [],
     caveats: [],

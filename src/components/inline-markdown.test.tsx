@@ -19,12 +19,31 @@ describe("InlineMarkdown", () => {
     expect(document.body.textContent).toBe("A Paseo plugin that talks.")
   })
 
+  it("renders one anchor per link, however many styled runs the label holds", () => {
+    render(
+      <InlineMarkdown text="[a **bold** label](https://x.example) and [another](https://y.example)" />
+    )
+
+    const links = screen.getAllByRole("link")
+    expect(links).toHaveLength(2)
+    expect(links[0]?.textContent).toBe("a bold label")
+    expect(links[0]?.querySelector("strong")?.textContent).toBe("bold")
+    expect(links[1]?.textContent).toBe("another")
+  })
+
   it("renders bold and code without their syntax", () => {
     render(<InlineMarkdown text="Open **9Router** with `paseo`" />)
 
     expect(screen.getByText("9Router").tagName).toBe("STRONG")
     expect(screen.getByText("paseo").tagName).toBe("CODE")
     expect(document.body.textContent).toBe("Open 9Router with paseo")
+  })
+
+  it("nests bold and italic for a triple run", () => {
+    render(<InlineMarkdown text="***really important***" />)
+
+    const strong = screen.getByText("really important").closest("strong")
+    expect(strong?.querySelector("em")?.textContent).toBe("really important")
   })
 
   it('keeps link labels as plain text when links="text"', () => {

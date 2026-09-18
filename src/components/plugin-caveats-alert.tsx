@@ -1,4 +1,5 @@
 import { IconAlertTriangle } from "@tabler/icons-react"
+import { InlineMarkdown } from "@/components/inline-markdown"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { PluginRecord } from "@/lib/plugin-schema"
 import { PLATFORM_LABELS } from "@/lib/registry-schema"
@@ -25,7 +26,9 @@ export function PluginCaveatsAlert({ plugin }: { plugin: PluginRecord }) {
         {plugin.caveats.length > 0 ? (
           <ul className="list-disc pl-4">
             {plugin.caveats.map((c) => (
-              <li key={c}>{c}</li>
+              <li key={c}>
+                <InlineMarkdown text={c} />
+              </li>
             ))}
           </ul>
         ) : null}

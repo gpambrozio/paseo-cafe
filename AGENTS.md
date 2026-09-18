@@ -54,7 +54,7 @@ the other by hand**:
    `plugin/shared/inline-markdown.ts` is the same arrangement for the
    *inline markdown* authors put in catalog text (plugin descriptions are
    full of `[Paseo](https://paseo.sh)`, `**bold**`, and `` `code` ``): both
-   sides parse it there and render the resulting segments with their own
+   sides parse it there and render the resulting nodes with their own
    primitives — `src/components/inline-markdown.tsx` (DOM) and
    `plugin/client/InlineMarkdown.tsx` (React Native). Surfaces that can't
    show formatting at all — `<meta>` descriptions, JSON-LD, OG images —

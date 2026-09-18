@@ -6,25 +6,41 @@
  *
  * Shared by the paseo.cafe website (src/components/inline-markdown.tsx) and
  * this Paseo plugin (../client/InlineMarkdown.tsx): the two can't share JSX,
- * so they share the parse instead and each renders the same segments with
- * its own primitives. Like ./catalog.ts it stays free of React, the Paseo
- * SDK, Zod, DOM globals, and Node APIs.
+ * so they share the parse instead and each renders the same nodes with its
+ * own primitives. Like ./catalog.ts it stays free of React, the Paseo SDK,
+ * Zod, DOM globals, and Node APIs.
  *
  * Deliberately only the *inline* subset — no block structure (headings,
- * lists, fences), because every surface that renders these segments is a
+ * lists, fences), because every surface that renders these nodes is a
  * single paragraph of running text. READMEs keep going through the full
  * remark pipeline in src/lib/markdown.ts.
+ *
+ * It is not a CommonMark implementation and doesn't try to be: where this
+ * reader can't make sense of a construct it leaves the source text alone
+ * rather than guessing, which is the failure mode readers can live with.
  */
 
-export interface InlineMarkdownSegment {
+export interface InlineMarkdownTextNode {
+  type: "text"
   /** The visible text, with markdown syntax already removed. */
   text: string
-  /** Present only for a link with a safe absolute destination. */
-  href?: string
   code?: boolean
   strong?: boolean
   emphasis?: boolean
 }
+
+/**
+ * One link, however many styled runs its label holds — so a renderer emits
+ * a single anchor (or a single press target) per link rather than one per
+ * run, which would multiply tab stops and screen-reader announcements.
+ */
+export interface InlineMarkdownLinkNode {
+  type: "link"
+  href: string
+  children: InlineMarkdownTextNode[]
+}
+
+export type InlineMarkdownNode = InlineMarkdownTextNode | InlineMarkdownLinkNode
 
 /**
  * Only absolute web and mail destinations become links. Authors write
@@ -37,36 +53,45 @@ const SAFE_HREF = /^(?:https?:\/\/|mailto:)/i
 
 const ESCAPABLE = /[\\`*_{}[\]()#+\-.!<>|~]/
 
-type SegmentStyle = Pick<
-  InlineMarkdownSegment,
-  "code" | "strong" | "emphasis" | "href"
->
+type TextStyle = Omit<InlineMarkdownTextNode, "type" | "text">
 
-/** Parses the inline subset of markdown into flat, renderer-neutral segments. */
-export function parseInlineMarkdown(source: string): InlineMarkdownSegment[] {
-  const segments: InlineMarkdownSegment[] = []
-  readInline(source, {}, segments)
-  return segments
+/** Parses the inline subset of markdown into renderer-neutral nodes. */
+export function parseInlineMarkdown(source: string): InlineMarkdownNode[] {
+  const nodes: InlineMarkdownNode[] = []
+  readInline(source, {}, nodes, false)
+  return nodes
 }
 
 /** The same text with all inline markdown syntax removed. */
 export function inlineMarkdownToPlainText(source: string): string {
-  return parseInlineMarkdown(source)
-    .map((segment) => segment.text)
+  return nodesToPlainText(parseInlineMarkdown(source))
+}
+
+function nodesToPlainText(nodes: readonly InlineMarkdownNode[]): string {
+  return nodes
+    .map((node) =>
+      node.type === "link" ? nodesToPlainText(node.children) : node.text
+    )
     .join("")
 }
 
+/**
+ * `insideLink` marks the parse of a link label: links can't nest, so there
+ * `[…](…)` and `<https://…>` stay text and the caller is guaranteed only
+ * text nodes back.
+ */
 function readInline(
   source: string,
-  style: SegmentStyle,
-  out: InlineMarkdownSegment[]
+  style: TextStyle,
+  out: InlineMarkdownNode[],
+  insideLink: boolean
 ): void {
   let plain = ""
   let index = 0
 
   const flush = () => {
     if (plain) {
-      out.push({ ...style, text: plain })
+      out.push({ type: "text", ...style, text: plain })
       plain = ""
     }
   }
@@ -84,13 +109,13 @@ function readInline(
       char === "`"
         ? readCode(source, index, style)
         : char === "["
-          ? readLink(source, index, style)
+          ? readLink(source, index, style, { insideLink })
           : char === "!" && source[index + 1] === "["
-            ? readLink(source, index + 1, style, { image: true })
+            ? readLink(source, index + 1, style, { insideLink, image: true })
             : char === "<"
-              ? readAutolink(source, index, style)
+              ? readAutolink(source, index, style, insideLink)
               : char === "*" || char === "_"
-                ? readEmphasis(source, index, style)
+                ? readEmphasis(source, index, style, insideLink)
                 : undefined
 
     if (!token) {
@@ -100,7 +125,7 @@ function readInline(
     }
 
     flush()
-    out.push(...token.segments)
+    out.push(...token.nodes)
     index = token.end
   }
 
@@ -108,8 +133,8 @@ function readInline(
 }
 
 interface Token {
-  segments: InlineMarkdownSegment[]
-  /** Index just past the token's closing syntax. */
+  nodes: InlineMarkdownNode[]
+  /** Index just past the syntax this token consumed. */
   end: number
 }
 
@@ -117,10 +142,12 @@ interface Token {
 function readCode(
   source: string,
   start: number,
-  style: SegmentStyle
+  style: TextStyle
 ): Token | undefined {
   const fence = runLength(source, start, "`")
-  const closing = findRun(source, start + fence, "`", fence)
+  // Backslash escapes don't apply inside code spans, so a `\` never hides
+  // the closing backtick: `` `\` `` is a span holding one backslash.
+  const closing = findRun(source, start + fence, "`", fence, false)
   if (closing === -1) return undefined
 
   // CommonMark strips one space of padding from `` `a` ``-style spans.
@@ -132,7 +159,7 @@ function readCode(
   if (!text) return undefined
 
   return {
-    segments: [{ ...style, code: true, text }],
+    nodes: [{ type: "text", ...style, code: true, text }],
     end: closing + fence,
   }
 }
@@ -141,15 +168,17 @@ function readCode(
  * An inline link: `[label](destination "optional title")`. With
  * `image: true` the same shape is an `![alt](src)` image, and only its alt
  * text survives — these surfaces show no images, for the same
- * remote-beacon reason src/lib/markdown.ts drops them from READMEs.
+ * remote-beacon reason src/lib/markdown.ts drops them from READMEs. An
+ * image inside a link label (the badge-in-link README idiom) is therefore
+ * just the badge's alt text.
  */
 function readLink(
   source: string,
   start: number,
-  style: SegmentStyle,
-  options: { image?: boolean } = {}
+  style: TextStyle,
+  options: { insideLink: boolean; image?: boolean }
 ): Token | undefined {
-  if (style.href) return undefined
+  if (options.insideLink && !options.image) return undefined
 
   const labelEnd = findClosing(source, start, "[", "]")
   if (labelEnd === -1 || source[labelEnd + 1] !== "(") return undefined
@@ -157,74 +186,125 @@ function readLink(
   const destinationEnd = findClosing(source, labelEnd + 1, "(", ")")
   if (destinationEnd === -1) return undefined
 
+  const end = destinationEnd + 1
   const label = source.slice(start + 1, labelEnd)
   // An image with no alt text leaves nothing behind; an empty link label
   // would leave nothing to click, so it stays literal.
-  if (!label) {
-    return options.image ? { segments: [], end: destinationEnd + 1 } : undefined
-  }
+  if (!label) return options.image ? { nodes: [], end } : undefined
 
+  const children = readLinkLabel(label, style)
   const href = options.image
     ? undefined
     : readDestination(source.slice(labelEnd + 2, destinationEnd))
-  const segments: InlineMarkdownSegment[] = []
-  // An unsafe or relative destination still shows its label, just not as a link.
-  readInline(label, href ? { ...style, href } : style, segments)
 
-  return { segments, end: destinationEnd + 1 }
+  // An unsafe or relative destination still shows its label, just not as a link.
+  return { nodes: href ? [{ type: "link", href, children }] : children, end }
+}
+
+function readLinkLabel(
+  label: string,
+  style: TextStyle
+): InlineMarkdownTextNode[] {
+  const nodes: InlineMarkdownNode[] = []
+  readInline(label, style, nodes, true)
+  // readInline's `insideLink` suppresses every node type but text.
+  return nodes.filter((node): node is InlineMarkdownTextNode => {
+    return node.type === "text"
+  })
 }
 
 /** An autolink: `<https://paseo.sh>`. */
 function readAutolink(
   source: string,
   start: number,
-  style: SegmentStyle
+  style: TextStyle,
+  insideLink: boolean
 ): Token | undefined {
-  if (style.href) return undefined
-
   const end = source.indexOf(">", start + 1)
   if (end === -1) return undefined
 
   const url = source.slice(start + 1, end)
   if (/\s/.test(url) || !SAFE_HREF.test(url)) return undefined
 
-  return { segments: [{ ...style, href: url, text: url }], end: end + 1 }
+  const text: InlineMarkdownTextNode = { type: "text", ...style, text: url }
+  return {
+    nodes: [insideLink ? text : { type: "link", href: url, children: [text] }],
+    end: end + 1,
+  }
 }
 
-/** `**strong**` / `__strong__` and `*emphasis*` / `_emphasis_`. */
+/**
+ * `*emphasis*`, `**strong**`, `***both***` and their `_` spellings: the
+ * delimiter run's length decides, so an odd run emphasizes and a run of two
+ * or more bolds.
+ */
 function readEmphasis(
   source: string,
   start: number,
-  style: SegmentStyle
+  style: TextStyle,
+  insideLink: boolean
 ): Token | undefined {
   const marker = source[start] as "*" | "_"
-  const run = Math.min(runLength(source, start, marker), 2)
-  const strong = run === 2
+  const open = runLength(source, start, marker)
 
-  if (strong ? style.strong : style.emphasis) return undefined
   // An opening run never hugs the whitespace it would emphasize away.
-  if (isBlank(source[start + run])) return undefined
+  if (isBlank(source[start + open])) return undefined
   // `snake_case` identifiers are not emphasis; `*` has no such intraword use.
   if (marker === "_" && isWord(source[start - 1])) return undefined
 
-  let cursor = start + run
-  while (cursor < source.length) {
-    const closing = findRun(source, cursor, marker, run)
-    if (closing === -1) return undefined
-    if (
-      !isBlank(source[closing - 1]) &&
-      !(marker === "_" && isWord(source[closing + run]))
-    ) {
-      const segments: InlineMarkdownSegment[] = []
-      const nested = strong
-        ? { ...style, strong: true }
-        : { ...style, emphasis: true }
-      readInline(source.slice(start + run, closing), nested, segments)
-      return { segments, end: closing + run }
+  const closing = findEmphasisClose(source, start + open, marker, open)
+  if (closing === -1) return undefined
+
+  const nodes: InlineMarkdownNode[] = []
+  readInline(
+    source.slice(start + open, closing),
+    {
+      ...style,
+      ...(open >= 2 ? { strong: true } : {}),
+      ...(open % 2 === 1 ? { emphasis: true } : {}),
+    },
+    nodes,
+    insideLink
+  )
+  return { nodes, end: closing + open }
+}
+
+/**
+ * Where a `length`-long delimiter run closes, or -1 when it never does —
+ * in which case the source text is left as-is. Runs of the same marker
+ * that open their own span are counted and skipped, so the outer `**` of
+ * `**a **b** c**` pairs with the outer one rather than the first closer it
+ * meets. A longer closing run only gives up `length` of its delimiters:
+ * `**a***` ends the bold and leaves a literal `*`.
+ */
+function findEmphasisClose(
+  source: string,
+  from: number,
+  marker: string,
+  length: number
+): number {
+  let depth = 0
+  for (let index = from; index < source.length; index += 1) {
+    if (source[index] === "\\") {
+      index += 1
+      continue
     }
-    cursor = closing + run
+    if (source[index] !== marker) continue
+
+    const run = runLength(source, index, marker)
+    if (run >= length) {
+      // A closing run never hugs the whitespace it would emphasize away,
+      // and `_` never closes mid-word (`snake_case` again).
+      const closes =
+        !isBlank(source[index - 1]) &&
+        !(marker === "_" && isWord(source[index + length]))
+      if (closes && depth === 0) return index
+      if (closes) depth -= 1
+      else if (!isBlank(source[index + run])) depth += 1
+    }
+    index += run - 1
   }
-  return undefined
+  return -1
 }
 
 /** The URL out of a link destination, ignoring `<…>` wrapping and any title. */
@@ -252,10 +332,11 @@ function findRun(
   source: string,
   from: number,
   char: string,
-  length: number
+  length: number,
+  honorEscapes: boolean
 ): number {
   for (let index = from; index < source.length; index += 1) {
-    if (source[index] === "\\") {
+    if (honorEscapes && source[index] === "\\") {
       index += 1
       continue
     }

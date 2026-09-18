@@ -25,6 +25,7 @@ import {
 } from "node:fs"
 import { basename, join } from "node:path"
 import { z } from "zod"
+import { CATALOG_DESCRIPTION_MAX_LENGTH } from "../plugin/shared/catalog.ts"
 import {
   extractReadmeImages,
   isTrustedRemoteImageUrl,
@@ -518,11 +519,14 @@ export async function scanOne(
       npmSecurity: npmReady ? candidateNpmSecurity : undefined,
       url: repositoryUrl,
       name: id,
-      description:
+      // Bounded here, where a third party's text enters the catalog: every
+      // surface parses it as inline markdown on render.
+      description: (
         pkg?.description ??
         manifestDescription ??
         firstParagraph(readme ?? "") ??
-        "",
+        ""
+      ).slice(0, CATALOG_DESCRIPTION_MAX_LENGTH),
       version,
       author: authorName(pkg?.author),
       license: repoMeta.license?.spdx_id ?? pkg?.license,
