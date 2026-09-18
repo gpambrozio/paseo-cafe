@@ -1,6 +1,7 @@
 import {
   IconAlertTriangle,
   IconBrandGithub,
+  IconDownload,
   IconExternalLink,
   IconStar,
 } from "@tabler/icons-react"
@@ -8,6 +9,7 @@ import { Link } from "@tanstack/react-router"
 import { PluginHealthChecks } from "@/components/plugin-health-checks"
 import { PluginManifest } from "@/components/plugin-manifest"
 import { PluginSecurityScanSection } from "@/components/plugin-security-scan"
+import { ReaderDate } from "@/components/reader-date"
 import { Badge } from "@/components/ui/badge"
 import { HOME_SEARCH_DEFAULT } from "@/lib/catalog-search"
 import type { PluginRecord } from "@/lib/plugin-schema"
@@ -15,10 +17,15 @@ import { pluginOwnerLogin } from "@/lib/plugin-schema"
 import { pluginRepositoryUrl } from "@/lib/plugin-source"
 import { normalizeCategory, PLATFORM_LABELS } from "@/lib/registry-schema"
 import { buildReportIssueUrl } from "@/lib/report-issue-url"
+import {
+  formatCatalogDownloads,
+  hasCompleteCatalogNpmMetrics,
+} from "../../plugin/shared/catalog"
 
 export function PluginSidebar({ plugin }: { plugin: PluginRecord }) {
   const username = pluginOwnerLogin(plugin)
   const repositoryUrl = pluginRepositoryUrl(plugin)
+  const hasNpmMetrics = hasCompleteCatalogNpmMetrics(plugin)
 
   return (
     <aside className="flex flex-col gap-6 bg-card p-3 lg:sticky lg:top-20 lg:w-1/3 lg:shrink-0 lg:self-start">
@@ -62,10 +69,20 @@ export function PluginSidebar({ plugin }: { plugin: PluginRecord }) {
         </a>
       </div>
       <div className="flex flex-col gap-1.5 text-foreground/70 text-sm">
-        {plugin.repoMeta ? (
+        {hasNpmMetrics ? (
+          <span className="flex items-center gap-1.5">
+            <IconDownload className="size-4 shrink-0" />
+            {formatCatalogDownloads(plugin.npm.downloadsLast30Days)}
+          </span>
+        ) : plugin.repoMeta ? (
           <span className="flex items-center gap-1.5">
             <IconStar className="size-4 shrink-0" /> {plugin.repoMeta.stars}{" "}
             stars
+          </span>
+        ) : null}
+        {hasNpmMetrics ? (
+          <span>
+            Published <ReaderDate iso={plugin.npm.publishedAt} />
           </span>
         ) : null}
         {plugin.license ? <span>License: {plugin.license}</span> : null}
