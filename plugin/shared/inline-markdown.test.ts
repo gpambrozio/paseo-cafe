@@ -105,6 +105,14 @@ describe("parseInlineMarkdown", () => {
     ])
   })
 
+  it("drops a link whose label is only an unlabelled badge", () => {
+    expect(
+      parseInlineMarkdown(
+        "Build [![](https://img.example/b.svg)](https://ci.example.com) status"
+      )
+    ).toEqual([text("Build "), text(" status")])
+  })
+
   it("flattens an autolink inside a link label, never nesting links", () => {
     expect(parseInlineMarkdown("[see <https://y.com>](https://x.com)")).toEqual(
       [

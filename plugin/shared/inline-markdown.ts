@@ -193,6 +193,11 @@ function readLink(
   if (!label) return options.image ? { nodes: [], end } : undefined
 
   const children = readLinkLabel(label, style)
+  // A label that parses to nothing — `[![](badge.svg)](https://ci.example)`,
+  // the unlabelled badge link — would otherwise become an empty anchor: an
+  // invisible target that a screen reader announces as a nameless link.
+  if (children.length === 0) return { nodes: [], end }
+
   const href = options.image
     ? undefined
     : readDestination(source.slice(labelEnd + 2, destinationEnd))
