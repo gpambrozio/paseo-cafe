@@ -11,6 +11,7 @@ import {
   HEALTH_KEYS,
   normalizeDirectoryCategory,
 } from "../shared/directory"
+import { InlineMarkdown } from "./InlineMarkdown"
 import { CAFE_CONTROL_RADIUS, CAFE_MONO_FONT } from "./visual"
 
 interface PluginRowProps {
@@ -279,9 +280,13 @@ export function PluginRow({
         ) : null}
       </View>
       {entry.description ? (
-        <Text style={styles.description} numberOfLines={2}>
-          {entry.description}
-        </Text>
+        <InlineMarkdown
+          text={entry.description}
+          theme={theme}
+          style={styles.description}
+          links="text"
+          numberOfLines={2}
+        />
       ) : null}
       {hasTagsRow ? (
         <View style={styles.tagsRow}>

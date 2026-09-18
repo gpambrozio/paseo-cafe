@@ -51,6 +51,14 @@ the other by hand**:
    hand" on the other — that drifts silently (it already had: the plugin's
    `manifestValid` health label said something different from what the
    check actually verifies until this was unified).
+   `plugin/shared/inline-markdown.ts` is the same arrangement for the
+   *inline markdown* authors put in catalog text (plugin descriptions are
+   full of `[Paseo](https://paseo.sh)`, `**bold**`, and `` `code` ``): both
+   sides parse it there and render the resulting segments with their own
+   primitives — `src/components/inline-markdown.tsx` (DOM) and
+   `plugin/client/InlineMarkdown.tsx` (React Native). Surfaces that can't
+   show formatting at all — `<meta>` descriptions, JSON-LD, OG images —
+   use its `inlineMarkdownToPlainText` rather than printing the syntax.
 2. **Visual language.** The website's design system — JetBrains Mono
    monospace everywhere (`src/styles.css`), `rounded-none` flat-bordered
    controls and badges (`src/components/ui/{button,badge,card}.tsx`),

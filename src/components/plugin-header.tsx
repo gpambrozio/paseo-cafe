@@ -1,5 +1,6 @@
 import { IconBrandGithub, IconVersions } from "@tabler/icons-react"
 import { Link } from "@tanstack/react-router"
+import { InlineMarkdown } from "@/components/inline-markdown"
 import { Badge } from "@/components/ui/badge"
 import type { PluginRecord } from "@/lib/plugin-schema"
 import { pluginOwnerLogin } from "@/lib/plugin-schema"
@@ -34,7 +35,11 @@ export function PluginHeader({ plugin }: { plugin: PluginRecord }) {
         ) : null}
       </div>
       <p className="max-w-2xl text-foreground/70">
-        {plugin.description || "No description available."}
+        {plugin.description ? (
+          <InlineMarkdown text={plugin.description} />
+        ) : (
+          "No description available."
+        )}
       </p>
       {versionLabel || plugin.paseoVersionRequirement ? (
         <div className="flex flex-wrap gap-1.5">

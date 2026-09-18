@@ -32,6 +32,7 @@ import {
   stripHtml,
 } from "../shared/directory"
 import { ExpandableSection } from "./ExpandableSection"
+import { InlineMarkdown } from "./InlineMarkdown"
 import { CAFE_CONTROL_RADIUS, CAFE_MONO_FONT } from "./visual"
 import { openExternal } from "./web"
 
@@ -571,7 +572,11 @@ export function PluginDetailPage({
         </View>
 
         {entry.description ? (
-          <Text style={styles.description}>{entry.description}</Text>
+          <InlineMarkdown
+            text={entry.description}
+            theme={theme}
+            style={styles.description}
+          />
         ) : null}
 
         {versionLabel || tags.length > 0 || entry.paseoVersionRequirement ? (

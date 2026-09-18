@@ -13,6 +13,7 @@ import { serializePluginJsonLd } from "@/lib/json-ld"
 import { getPlugin } from "@/lib/plugins-data"
 import { seo } from "@/lib/seo"
 import { SITE_URL } from "@/lib/site"
+import { inlineMarkdownToPlainText } from "../../plugin/shared/inline-markdown"
 
 export const Route = createFileRoute("/plugins/$id")({
   component: PluginDetail,
@@ -26,7 +27,9 @@ export const Route = createFileRoute("/plugins/$id")({
     const metadata = seo({
       title: loaderData.name,
       description:
-        loaderData.description || `${loaderData.name} — a paseo.sh plugin.`,
+        // Search results and social cards show this as plain text.
+        inlineMarkdownToPlainText(loaderData.description) ||
+        `${loaderData.name} — a paseo.sh plugin.`,
       path: `/plugins/${loaderData.id}`,
       image: `/og/${loaderData.id}.png`,
       type: "article",

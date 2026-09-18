@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { Resvg } from "@resvg/resvg-js"
 import satori from "satori"
+import { inlineMarkdownToPlainText } from "../plugin/shared/inline-markdown.ts"
 import {
   BRAND_BROWN,
   BRAND_CREAM,
@@ -113,7 +114,8 @@ export async function renderOgImage({
               lineHeight: 1.5,
             }}
           >
-            {truncate(description, 130)}
+            {/* satori paints flat text, so markdown syntax would show up verbatim. */}
+            {truncate(inlineMarkdownToPlainText(description), 130)}
           </div>
         ) : null}
       </div>
