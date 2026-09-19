@@ -69,8 +69,7 @@ function projectBlocks(
         projectBlocks(block.children, source, out)
         break
       case "table":
-        for (const row of block.children)
-          projectBlocks(row.children, source, out)
+        projectBlocks(block.children, source, out)
         break
       case "tableRow":
         projectBlocks(block.children, source, out)
@@ -88,6 +87,7 @@ function projectBlocks(
       case "definition":
       case "footnoteDefinition":
       case "yaml":
+        pushRun(out, {}, sourceOf(block, source))
         break
       default:
         pushRun(out, {}, sourceOf(block, source))
@@ -118,7 +118,7 @@ function projectInline(
         projectInline(node.children, source, { ...style, emphasis: true }, out)
         break
       case "delete":
-        projectInline(node.children, source, style, out)
+        pushRun(out, style, sourceOf(node, source))
         break
       case "inlineCode":
         pushRun(out, { ...style, code: true }, node.value)

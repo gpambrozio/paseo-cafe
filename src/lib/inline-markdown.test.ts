@@ -152,8 +152,12 @@ describe("parseInlineMarkdown", () => {
 
   it("keeps constructs outside the model as their source text", () => {
     expect(parseInlineMarkdown("See [the docs][ref] and ~~old~~ text")).toEqual(
-      [text("See [the docs][ref] and old text")]
+      [text("See [the docs][ref] and ~~old~~ text")]
     )
+    expect(parseInlineMarkdown("---")).toEqual([text("---")])
+    expect(parseInlineMarkdown("[ref]: https://example.com")).toEqual([
+      text("[ref]: https://example.com"),
+    ])
   })
 
   it("does not read snake_case identifiers as emphasis", () => {
@@ -166,6 +170,12 @@ describe("parseInlineMarkdown", () => {
     expect(
       parseInlineMarkdown("# Title\n\nFirst.\n\n- one\n- two\n\n```\ncode\n```")
     ).toEqual([text("Title First. one two "), text("code", { code: true })])
+  })
+
+  it("separates every table cell and row", () => {
+    expect(parseInlineMarkdown("| a | b |\n| - | - |\n| c | d |")).toEqual([
+      text("a b c d"),
+    ])
   })
 
   it("returns nothing for empty or image-only input", () => {
