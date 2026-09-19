@@ -1,0 +1,7 @@
+{
+  "repo": "Davnn1/opencode-mcp-toggle",
+  "package": "opencode-mcp-toggle",
+  "categories": ["orchestration", "productivity"],
+  "caveats": ["Requires OpenCode and Paseo >= 0.8.0"],
+  "submittedBy": "Davnn1"
+}
