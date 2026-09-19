@@ -16,6 +16,8 @@ import type {
 import {
   DIRECTORY_CATEGORY_LABELS,
   DIRECTORY_PLATFORM_LABELS,
+  directoryCaveatNodes,
+  directoryDescriptionNodes,
   formatDirectoryDate,
   formatDirectoryDownloads,
   formatDirectoryVersion,
@@ -91,6 +93,7 @@ export function PluginDetailPage({
     [entry.manifest]
   )
   const readmeText = entry.readmeText?.length ? entry.readmeText : undefined
+  const descriptionNodes = directoryDescriptionNodes(entry)
 
   const styles = useMemo(
     () => ({
@@ -574,9 +577,9 @@ export function PluginDetailPage({
           <Text style={styles.ownerText}>by {repositoryOwner}</Text>
         </View>
 
-        {entry.description ? (
+        {descriptionNodes.length > 0 ? (
           <InlineMarkdown
-            text={entry.description}
+            nodes={descriptionNodes}
             theme={theme}
             style={styles.description}
           />
@@ -705,10 +708,13 @@ export function PluginDetailPage({
                 .
               </Text>
             ) : null}
-            {entry.caveats.map((caveat) => (
+            {entry.caveats.map((caveat, index) => (
               <Text key={caveat} style={styles.caveatLine}>
                 {"⚠ "}
-                <InlineMarkdown text={caveat} theme={theme} />
+                <InlineMarkdown
+                  nodes={directoryCaveatNodes(entry, index)}
+                  theme={theme}
+                />
               </Text>
             ))}
             {limitationsText ? (
@@ -1213,10 +1219,13 @@ export function PluginDetailPage({
                 Supported platforms: {entry.platforms.join(", ")}.
               </Text>
             ) : null}
-            {entry.caveats.map((caveat) => (
+            {entry.caveats.map((caveat, index) => (
               <Text key={caveat} style={styles.caveatLine}>
                 {"⚠ "}
-                <InlineMarkdown text={caveat} theme={theme} />
+                <InlineMarkdown
+                  nodes={directoryCaveatNodes(entry, index)}
+                  theme={theme}
+                />
               </Text>
             ))}
             {limitationsText ? (

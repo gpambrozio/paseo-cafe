@@ -1,28 +1,28 @@
-import { Fragment, type ReactNode, useMemo } from "react"
-import type { InlineMarkdownTextNode } from "../../plugin/shared/inline-markdown"
-import { parseInlineMarkdown } from "../../plugin/shared/inline-markdown"
+import { Fragment, type ReactNode } from "react"
+import type {
+  InlineMarkdownNode,
+  InlineMarkdownTextNode,
+} from "../../plugin/shared/inline-markdown"
 
 /**
  * Renders the inline markdown authors write in catalog text — links, bold,
- * italic, code — instead of printing its syntax. The parse is shared with
- * the Paseo plugin (plugin/shared/inline-markdown.ts), which renders the
- * same nodes with React Native primitives.
+ * italic, code — from the nodes the scan already projected it onto
+ * (plugin/shared/inline-markdown.ts). Nothing is parsed here; the Paseo
+ * plugin renders the very same nodes with React Native primitives.
  *
  * `links="text"` keeps link labels as plain text, for the cards and rows
  * that are themselves one big <Link>: an anchor inside an anchor is invalid
  * HTML, and the whole card already has a destination.
  */
 export function InlineMarkdown({
-  text,
+  nodes,
   links = "anchor",
   className,
 }: {
-  text: string
+  nodes: readonly InlineMarkdownNode[]
   links?: "anchor" | "text"
   className?: string
 }) {
-  const nodes = useMemo(() => parseInlineMarkdown(text), [text])
-
   return (
     <span className={className}>
       {nodes.map((node, index) => (

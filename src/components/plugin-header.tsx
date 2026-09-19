@@ -35,8 +35,8 @@ export function PluginHeader({ plugin }: { plugin: PluginRecord }) {
         ) : null}
       </div>
       <p className="max-w-2xl text-foreground/70">
-        {plugin.description ? (
-          <InlineMarkdown text={plugin.description} />
+        {plugin.descriptionNodes.length > 0 ? (
+          <InlineMarkdown nodes={plugin.descriptionNodes} />
         ) : (
           "No description available."
         )}

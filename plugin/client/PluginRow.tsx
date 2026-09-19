@@ -6,6 +6,7 @@ import type { DirectoryEntry, InstalledPlugin } from "../shared/directory"
 import {
   DIRECTORY_CATEGORY_LABELS,
   DIRECTORY_PLATFORM_LABELS,
+  directoryDescriptionNodes,
   formatDirectoryCompactCount,
   formatDirectoryDownloads,
   formatDirectoryVersion,
@@ -291,7 +292,7 @@ export function PluginRow({
       </View>
       {entry.description ? (
         <InlineMarkdown
-          text={entry.description}
+          nodes={directoryDescriptionNodes(entry)}
           theme={theme}
           style={styles.description}
           links="text"

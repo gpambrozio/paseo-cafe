@@ -28,7 +28,7 @@ export const Route = createFileRoute("/plugins/$id")({
       title: loaderData.name,
       description:
         // Search results and social cards show this as plain text.
-        inlineMarkdownToPlainText(loaderData.description) ||
+        inlineMarkdownToPlainText(loaderData.descriptionNodes) ||
         `${loaderData.name} — a paseo.sh plugin.`,
       path: `/plugins/${loaderData.id}`,
       image: `/og/${loaderData.id}.png`,

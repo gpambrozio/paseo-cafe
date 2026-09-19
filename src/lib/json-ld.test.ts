@@ -9,11 +9,13 @@ const basePlugin: PluginRecord = {
   url: "https://github.com/mcowger/paseo-plugins/tree/main/subagent-activity",
   name: "subagent-activity",
   description: "Monitors managed descendants.",
+  descriptionNodes: [{ type: "text", text: "Monitors managed descendants." }],
   version: "0.0.0",
   license: "MIT",
   categories: ["monitoring"],
   platforms: [],
   caveats: [],
+  caveatNodes: [],
   owner: {
     login: "mcowger",
     avatarUrl: "https://avatars.githubusercontent.com/u/1929548?v=4",
@@ -67,14 +69,34 @@ describe("pluginJsonLd", () => {
     expect(ld).not.toHaveProperty("dateModified")
   })
 
-  it("publishes the description as plain text, not markdown", () => {
+  it("publishes the description's plain text, never the raw markdown", () => {
     const ld = pluginJsonLd({
       ...basePlugin,
-      description:
-        "A [Paseo](https://paseo.sh) plugin with **bold** and `code`.",
+      description: "A [Paseo](https://paseo.sh) plugin with `code`.",
+      descriptionNodes: [
+        { type: "text", text: "A " },
+        {
+          type: "link",
+          href: "https://paseo.sh",
+          children: [{ type: "text", text: "Paseo" }],
+        },
+        { type: "text", text: " plugin with " },
+        { type: "text", text: "code", code: true },
+        { type: "text", text: "." },
+      ],
     })
 
-    expect(ld.description).toBe("A Paseo plugin with bold and code.")
+    expect(ld.description).toBe("A Paseo plugin with code.")
+  })
+
+  it("omits a description whose nodes carry no text", () => {
+    const ld = pluginJsonLd({
+      ...basePlugin,
+      description: "![](https://img.example/x.png)",
+      descriptionNodes: [],
+    })
+
+    expect(ld.description).toBeUndefined()
   })
 
   it("falls back to the generated OG image when there are no screenshots", () => {
@@ -117,7 +139,11 @@ describe("pluginJsonLd", () => {
 describe("serializePluginJsonLd", () => {
   it("escapes script-closing markup without changing the JSON value", () => {
     const description = "</script><script>alert('xss')</script>"
-    const serialized = serializePluginJsonLd({ ...basePlugin, description })
+    const serialized = serializePluginJsonLd({
+      ...basePlugin,
+      description,
+      descriptionNodes: [{ type: "text", text: description }],
+    })
 
     expect(serialized).not.toContain("<")
     expect(JSON.parse(serialized).description).toBe(description)

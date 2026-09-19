@@ -17,9 +17,11 @@ function plugin(
     url: `https://github.com/acme/${id}`,
     name: id,
     description: "",
+    descriptionNodes: [],
     categories: [],
     platforms: [],
     caveats: [],
+    caveatNodes: [],
     health: {
       manifestValid: true,
       hasReadme: true,

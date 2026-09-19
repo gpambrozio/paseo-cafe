@@ -14,8 +14,9 @@ export function pluginJsonLd(plugin: PluginRecord) {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name: plugin.name,
-    // Structured data is read, not rendered: markdown syntax is noise here.
-    description: inlineMarkdownToPlainText(plugin.description) || undefined,
+    // Structured data is read, not rendered: the plain form, or nothing.
+    description:
+      inlineMarkdownToPlainText(plugin.descriptionNodes) || undefined,
     url: `${SITE_URL}/plugins/${plugin.id}`,
     image: plugin.images[0] ?? `${SITE_URL}/og/${plugin.id}.png`,
     applicationCategory: "DeveloperApplication",

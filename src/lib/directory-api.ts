@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { isTrustedRemoteImageUrl } from "@/lib/images"
 import {
+  inlineMarkdownNodeSchema,
   normalizePluginVersion,
   type PluginRecord,
   pluginHealthSchema,
@@ -43,6 +44,7 @@ export const directoryPluginSchema = z.object({
   url: httpUrlSchema.max(2_048),
   name: z.string().max(200),
   description: z.string().max(CATALOG_DESCRIPTION_MAX_LENGTH),
+  descriptionNodes: z.array(inlineMarkdownNodeSchema).optional(),
   version: z.string().max(CATALOG_VERSION_MAX_LENGTH).optional(),
   author: z.string().max(200).optional(),
   license: z.string().max(100).optional(),
@@ -50,6 +52,7 @@ export const directoryPluginSchema = z.object({
   categories: z.array(z.string().max(100)).max(32),
   platforms: z.array(z.string().max(100)).max(32),
   caveats: z.array(z.string().max(1_000)).max(64),
+  caveatNodes: z.array(z.array(inlineMarkdownNodeSchema)).max(64).optional(),
   manifest: z.record(z.string(), z.unknown()).optional(),
   repoMeta: z
     .object({
@@ -201,6 +204,11 @@ export function projectPluginForDirectory(
     "caveats",
     plugin.caveats.slice(0, 64).map((value) => boundedString(value, 1_000))
   )
+  // The rendered forms travel together with their raw strings, so a
+  // consumer that has one always has the other. caveatNodes stays aligned
+  // with caveats by construction (same slice), or is omitted whole.
+  addIfItFits("descriptionNodes", plugin.descriptionNodes)
+  addIfItFits("caveatNodes", plugin.caveatNodes.slice(0, 64))
   addIfItFits("manifest", plugin.manifest)
   addIfItFits(
     "repoMeta",

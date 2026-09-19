@@ -3,13 +3,18 @@
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 import { InlineMarkdown } from "@/components/inline-markdown"
+import { parseInlineMarkdown } from "@/lib/inline-markdown"
 
 afterEach(cleanup)
 
 describe("InlineMarkdown", () => {
-  it("renders a markdown link as an anchor instead of its syntax", () => {
+  it("renders a link node as an anchor", () => {
     render(
-      <InlineMarkdown text="A [Paseo](https://paseo.sh) plugin that talks." />
+      <InlineMarkdown
+        nodes={parseInlineMarkdown(
+          "A [Paseo](https://paseo.sh) plugin that talks."
+        )}
+      />
     )
 
     const link = screen.getByRole("link", { name: "Paseo" })
@@ -21,7 +26,11 @@ describe("InlineMarkdown", () => {
 
   it("renders one anchor per link, however many styled runs the label holds", () => {
     render(
-      <InlineMarkdown text="[a **bold** label](https://x.example) and [another](https://y.example)" />
+      <InlineMarkdown
+        nodes={parseInlineMarkdown(
+          "[a **bold** label](https://x.example) and [another](https://y.example)"
+        )}
+      />
     )
 
     const links = screen.getAllByRole("link")
@@ -31,16 +40,22 @@ describe("InlineMarkdown", () => {
     expect(links[1]?.textContent).toBe("another")
   })
 
-  it("renders bold and code without their syntax", () => {
-    render(<InlineMarkdown text="Open **9Router** with `paseo`" />)
+  it("renders bold and code runs", () => {
+    render(
+      <InlineMarkdown
+        nodes={parseInlineMarkdown("Open **9Router** with `paseo`")}
+      />
+    )
 
     expect(screen.getByText("9Router").tagName).toBe("STRONG")
     expect(screen.getByText("paseo").tagName).toBe("CODE")
     expect(document.body.textContent).toBe("Open 9Router with paseo")
   })
 
-  it("nests bold and italic for a triple run", () => {
-    render(<InlineMarkdown text="***really important***" />)
+  it("nests bold and italic for a run that is both", () => {
+    render(
+      <InlineMarkdown nodes={parseInlineMarkdown("***really important***")} />
+    )
 
     const strong = screen.getByText("really important").closest("strong")
     expect(strong?.querySelector("em")?.textContent).toBe("really important")
@@ -48,17 +63,24 @@ describe("InlineMarkdown", () => {
 
   it('keeps link labels as plain text when links="text"', () => {
     render(
-      <InlineMarkdown text="A [Paseo](https://paseo.sh) plugin." links="text" />
+      <InlineMarkdown
+        nodes={parseInlineMarkdown("A [Paseo](https://paseo.sh) plugin.")}
+        links="text"
+      />
     )
 
     expect(screen.queryByRole("link")).toBeNull()
     expect(document.body.textContent).toBe("A Paseo plugin.")
   })
 
-  it("never renders an anchor for an unsafe destination", () => {
-    render(<InlineMarkdown text="[click me](javascript:alert(1))" />)
+  it("renders exactly the nodes it is given, never the raw string", () => {
+    render(
+      <InlineMarkdown
+        nodes={[{ type: "text", text: "A [Paseo](https://paseo.sh) plugin" }]}
+      />
+    )
 
     expect(screen.queryByRole("link")).toBeNull()
-    expect(document.body.textContent).toBe("click me")
+    expect(document.body.textContent).toBe("A [Paseo](https://paseo.sh) plugin")
   })
 })

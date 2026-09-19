@@ -1,12 +1,14 @@
 import type { PluginTheme } from "@getpaseo/plugin"
 import { useMemo } from "react"
 import { Text, type TextStyle } from "react-native"
-import type { InlineMarkdownTextNode } from "../shared/inline-markdown"
-import { parseInlineMarkdown } from "../shared/inline-markdown"
+import type {
+  InlineMarkdownNode,
+  InlineMarkdownTextNode,
+} from "../shared/inline-markdown"
 import { openExternal } from "./web"
 
 interface InlineMarkdownProps {
-  text: string
+  nodes: readonly InlineMarkdownNode[]
   theme: PluginTheme
   /**
    * Base text style; node styling layers on top of it. Omit it when this
@@ -24,18 +26,18 @@ interface InlineMarkdownProps {
 
 /**
  * Renders the inline markdown authors write in catalog text — links, bold,
- * italic, code — instead of printing its syntax. Shares its parse with the
- * paseo.cafe website (../shared/inline-markdown.ts), which renders the same
- * nodes as DOM elements in src/components/inline-markdown.tsx.
+ * italic, code — from the nodes the catalog already carries
+ * (../shared/inline-markdown.ts). Nothing is parsed here: paseo.cafe
+ * projected the markdown at scan time, and its own
+ * src/components/inline-markdown.tsx renders the very same nodes as DOM.
  */
 export function InlineMarkdown({
-  text,
+  nodes,
   theme,
   style,
   links = "press",
   numberOfLines,
 }: InlineMarkdownProps) {
-  const nodes = useMemo(() => parseInlineMarkdown(text), [text])
   const styles = useMemo(
     () => ({
       link: {

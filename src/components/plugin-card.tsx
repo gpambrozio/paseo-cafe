@@ -88,8 +88,8 @@ export function PluginCard({
             ) : null}
           </div>
           <CardDescription className="line-clamp-2">
-            {plugin.description ? (
-              <InlineMarkdown text={plugin.description} links="text" />
+            {plugin.descriptionNodes.length > 0 ? (
+              <InlineMarkdown nodes={plugin.descriptionNodes} links="text" />
             ) : (
               "No description available."
             )}

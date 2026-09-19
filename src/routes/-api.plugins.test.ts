@@ -52,6 +52,7 @@ describe("GET /api/plugins", () => {
       url: "https://github.com/example/adversarial",
       name: "Adversarial",
       description: "",
+      descriptionNodes: [],
       version: "1.2.3",
       package: "@example/adversarial",
       npm: {
@@ -74,6 +75,9 @@ describe("GET /api/plugins", () => {
       readmeText,
       readmeHtml: "<p>must not leave the site</p>",
       caveats: Array.from({ length: 64 }, () => "c".repeat(1_000)),
+      caveatNodes: Array.from({ length: 64 }, () => [
+        { type: "text" as const, text: "c".repeat(1_000) },
+      ]),
       installNotesHtml: `<p>${"i".repeat(100_000)}</p>`,
       limitationsNotesHtml: `<p>${"l".repeat(100_000)}</p>`,
       repoMeta: {
@@ -141,9 +145,11 @@ describe("GET /api/plugins", () => {
       url: "https://github.com/example/git-only",
       name: "Git only",
       description: "",
+      descriptionNodes: [],
       categories: [],
       platforms: [],
       caveats: [],
+      caveatNodes: [],
       repoMeta: {
         stars: 42,
         openIssues: 0,
@@ -173,6 +179,63 @@ describe("GET /api/plugins", () => {
     })
   })
 
+  it("carries the rendered description and caveats beside their raw strings", () => {
+    const projected = projectPluginForDirectory({
+      id: "rendered",
+      repo: "example/rendered",
+      url: "https://github.com/example/rendered",
+      name: "Rendered",
+      description: "A [Paseo](https://paseo.sh) plugin",
+      descriptionNodes: [
+        { type: "text", text: "A " },
+        {
+          type: "link",
+          href: "https://paseo.sh",
+          children: [{ type: "text", text: "Paseo" }],
+        },
+        { type: "text", text: " plugin" },
+      ],
+      categories: [],
+      platforms: [],
+      caveats: ["Needs `paseo` on PATH"],
+      caveatNodes: [
+        [
+          { type: "text", text: "Needs " },
+          { type: "text", text: "paseo", code: true },
+          { type: "text", text: " on PATH" },
+        ],
+      ],
+      health: {
+        manifestValid: true,
+        hasReadme: true,
+        hasLicense: true,
+        hasTests: true,
+        hasTypecheckScript: true,
+        updatedRecently: true,
+      },
+      images: [],
+      videos: [],
+      scannedAt: "2026-09-01T00:00:00.000Z",
+    })
+
+    expect(projected.description).toBe("A [Paseo](https://paseo.sh) plugin")
+    expect(projected.descriptionNodes).toEqual([
+      { type: "text", text: "A " },
+      {
+        type: "link",
+        href: "https://paseo.sh",
+        children: [{ type: "text", text: "Paseo" }],
+      },
+      { type: "text", text: " plugin" },
+    ])
+    expect(projected.caveatNodes).toHaveLength(projected.caveats.length)
+    expect(projected.caveatNodes?.[0]?.[1]).toEqual({
+      type: "text",
+      text: "paseo",
+      code: true,
+    })
+  })
+
   it("preserves failed security metadata before budgeting bulky fields", () => {
     const projected = projectPluginForDirectory({
       id: "failed-security",
@@ -180,10 +243,12 @@ describe("GET /api/plugins", () => {
       url: "https://github.com/example/failed-security",
       name: "Failed security",
       description: "",
+      descriptionNodes: [],
       manifest: { payload: "m".repeat(100_000) },
       categories: [],
       platforms: [],
       caveats: [],
+      caveatNodes: [],
       installNotesHtml: `<p>${"i".repeat(100_000)}</p>`,
       limitationsNotesHtml: `<p>${"l".repeat(100_000)}</p>`,
       health: {
@@ -228,9 +293,11 @@ describe("GET /api/plugins", () => {
         url: "https://github.com/example/overlong-path",
         name: "Overlong path",
         description: "",
+        descriptionNodes: [],
         categories: [],
         platforms: [],
         caveats: [],
+        caveatNodes: [],
         health: {
           manifestValid: true,
           hasReadme: false,

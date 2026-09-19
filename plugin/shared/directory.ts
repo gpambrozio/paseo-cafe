@@ -44,6 +44,8 @@ import {
   normalizeCatalogCategory,
   normalizeCatalogCategoryFilter,
 } from "./catalog"
+import type { InlineMarkdownNode } from "./inline-markdown"
+import { inlineMarkdownFromPlainText } from "./inline-markdown"
 
 export const DEFAULT_DIRECTORY_URL = "https://paseo.cafe/api/plugins"
 
@@ -411,6 +413,27 @@ const directoryManifestSchema = z
     }
   })
 
+/**
+ * plugin/shared/inline-markdown.ts's model, as the API hands it over. Text
+ * and href lengths follow the raw fields they render; a node count bound
+ * keeps a hostile catalog from handing the renderer thousands of Texts.
+ */
+const inlineMarkdownTextNodeSchema = z.object({
+  type: z.literal("text"),
+  text: z.string().max(4_000),
+  code: z.boolean().optional(),
+  strong: z.boolean().optional(),
+  emphasis: z.boolean().optional(),
+})
+const inlineMarkdownNodeSchema = z.discriminatedUnion("type", [
+  inlineMarkdownTextNodeSchema,
+  z.object({
+    type: z.literal("link"),
+    href: z.string().max(2_048),
+    children: z.array(inlineMarkdownTextNodeSchema).max(1_000),
+  }),
+])
+
 const directoryHealthShape = {
   manifestValid: z.boolean().optional(),
   hasReadme: z.boolean().optional(),
@@ -458,6 +481,9 @@ export const directoryEntrySchema = z
     url: httpUrlSchema,
     name: z.string().max(200),
     description: z.string().max(4_000).default(""),
+    // The rendered form of `description`. Optional because a catalog that
+    // predates it (an older deployment, a staging build) only has the string.
+    descriptionNodes: z.array(inlineMarkdownNodeSchema).max(4_000).optional(),
     // Normalized package.json semver from the catalog scanner. Optional so an
     // older catalog or a plugin without a valid version still remains browsable.
     version: z
@@ -469,6 +495,10 @@ export const directoryEntrySchema = z
     categories: z.array(z.string().max(100)).max(32).default([]),
     platforms: z.array(z.string().max(100)).max(32).default([]),
     caveats: z.array(z.string().max(1_000)).max(64).default([]),
+    caveatNodes: z
+      .array(z.array(inlineMarkdownNodeSchema).max(1_000))
+      .max(64)
+      .optional(),
     license: z.string().max(100).optional(),
     // e.g. ">=0.8.0" — the plugin's own `requirements.paseo` from its
     // paseo-plugin.json (see scripts/scan.ts on the site). Highlighted the
@@ -600,6 +630,26 @@ export const directoryEntrySchema = z
   })
 
 export type DirectoryEntry = z.infer<typeof directoryEntrySchema>
+
+/** What to render for the description: the model, or the string verbatim. */
+export function directoryDescriptionNodes(
+  entry: Pick<DirectoryEntry, "description" | "descriptionNodes">
+): InlineMarkdownNode[] {
+  return (
+    entry.descriptionNodes ?? inlineMarkdownFromPlainText(entry.description)
+  )
+}
+
+/** What to render for `caveats[index]`, falling back per caveat. */
+export function directoryCaveatNodes(
+  entry: Pick<DirectoryEntry, "caveats" | "caveatNodes">,
+  index: number
+): InlineMarkdownNode[] {
+  return (
+    entry.caveatNodes?.[index] ??
+    inlineMarkdownFromPlainText(entry.caveats[index] ?? "")
+  )
+}
 
 export const installedPluginSchema = z.object({
   id: z.string(),

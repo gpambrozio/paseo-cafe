@@ -25,9 +25,9 @@ export function PluginCaveatsAlert({ plugin }: { plugin: PluginRecord }) {
         ) : null}
         {plugin.caveats.length > 0 ? (
           <ul className="list-disc pl-4">
-            {plugin.caveats.map((c) => (
+            {plugin.caveats.map((c, index) => (
               <li key={c}>
-                <InlineMarkdown text={c} />
+                <InlineMarkdown nodes={plugin.caveatNodes[index] ?? []} />
               </li>
             ))}
           </ul>
