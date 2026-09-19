@@ -1,0 +1,10 @@
+{
+  "repo": "gpambrozio/paseo-plugins",
+  "path": "model-pricing",
+  "categories": ["productivity", "developer-tools"],
+  "caveats": [
+    "Prices for Anthropic, OpenAI, Fireworks and Ollama Cloud come from the community models.dev catalog, not from the vendors themselves",
+    "The daemon machine needs network access to models.dev and openrouter.ai"
+  ],
+  "submittedBy": "gpambrozio"
+}
