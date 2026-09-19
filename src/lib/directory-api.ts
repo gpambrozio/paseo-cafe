@@ -175,14 +175,14 @@ export function projectPluginForDirectory(
       : {}),
   }
 
-  const addIfItFits = (key: string, value: unknown) => {
-    if (value === undefined) return
+  const addIfItFits = (key: string, value: unknown): boolean => {
+    if (value === undefined) return false
     const previous = projected[key]
     projected[key] = value
-    if (serializedBytes(projected) > MAX_API_PLUGIN_BYTES) {
-      if (previous === undefined) delete projected[key]
-      else projected[key] = previous
-    }
+    if (serializedBytes(projected) <= MAX_API_PLUGIN_BYTES) return true
+    if (previous === undefined) delete projected[key]
+    else projected[key] = previous
+    return false
   }
 
   addIfItFits("author", plugin.author && boundedString(plugin.author, 200))
@@ -200,15 +200,15 @@ export function projectPluginForDirectory(
     "platforms",
     plugin.platforms.slice(0, 32).map((value) => boundedString(value, 100))
   )
-  addIfItFits(
-    "caveats",
-    plugin.caveats.slice(0, 64).map((value) => boundedString(value, 1_000))
-  )
-  // The rendered forms travel together with their raw strings, so a
-  // consumer that has one always has the other. caveatNodes stays aligned
-  // with caveats by construction (same slice), or is omitted whole.
   addIfItFits("descriptionNodes", plugin.descriptionNodes)
-  addIfItFits("caveatNodes", plugin.caveatNodes.slice(0, 64))
+  const caveats = plugin.caveats
+    .slice(0, 64)
+    .map((value) => boundedString(value, 1_000))
+  if (addIfItFits("caveats", caveats)) {
+    // Parsed caveats are useful only beside the raw strings the renderers
+    // iterate. If they do not fit, consumers deliberately fall back to raw.
+    addIfItFits("caveatNodes", plugin.caveatNodes.slice(0, caveats.length))
+  }
   addIfItFits("manifest", plugin.manifest)
   addIfItFits(
     "repoMeta",

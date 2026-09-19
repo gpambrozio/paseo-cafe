@@ -29,7 +29,7 @@ export interface InlineMarkdownTextNode {
  * a single anchor (or a single press target) per link rather than one per
  * run, which would multiply tab stops and screen-reader announcements.
  * `href` is always an absolute `http(s)` URL with a host or a non-empty
- * `mailto:` address; the scan validated it (src/lib/inline-markdown.ts).
+ * `mailto:` address; both the scan and directory consumer validate it.
  */
 export interface InlineMarkdownLinkNode {
   type: "link"
@@ -38,6 +38,36 @@ export interface InlineMarkdownLinkNode {
 }
 
 export type InlineMarkdownNode = InlineMarkdownTextNode | InlineMarkdownLinkNode
+
+const INVISIBLE_INLINE_TEXT = /[\p{White_Space}\p{Cc}\p{Cf}]/gu
+
+/** Whether text contains something visible enough to label an interactive link. */
+export function hasVisibleInlineText(text: string): boolean {
+  return text.replace(INVISIBLE_INLINE_TEXT, "").length > 0
+}
+
+/** The destination an inline link may carry, or nothing when it is unsafe. */
+export function safeInlineHref(value: string): string | undefined {
+  let parsed: URL
+  try {
+    parsed = new URL(value)
+  } catch {
+    return undefined
+  }
+
+  if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+    return parsed.hostname ? value : undefined
+  }
+  if (parsed.protocol !== "mailto:") return undefined
+
+  try {
+    return hasVisibleInlineText(decodeURIComponent(parsed.pathname))
+      ? value
+      : undefined
+  } catch {
+    return undefined
+  }
+}
 
 /** The nodes' text with no formatting, for surfaces that can't show any. */
 export function inlineMarkdownToPlainText(

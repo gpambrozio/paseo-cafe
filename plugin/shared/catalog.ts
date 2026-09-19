@@ -11,9 +11,9 @@ export const CATALOG_VERSION_MAX_LENGTH = 100
 
 /**
  * Descriptions come from a third party's `package.json`/manifest and are
- * parsed as inline markdown (./inline-markdown.ts) on every render, so they
- * are bounded where they enter the catalog (scripts/scan.ts) rather than
- * trusted at the length whoever wrote them chose.
+ * parsed as inline markdown once during the catalog scan, so they are bounded
+ * where they enter the catalog (scripts/scan.ts) rather than trusted at the
+ * length whoever wrote them chose.
  */
 export const CATALOG_DESCRIPTION_MAX_LENGTH = 1_000
 

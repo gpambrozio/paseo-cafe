@@ -236,6 +236,37 @@ describe("GET /api/plugins", () => {
     })
   })
 
+  it("omits parsed caveats when their raw strings exceed the entry budget", () => {
+    const projected = projectPluginForDirectory({
+      id: "oversized-caveats",
+      repo: "example/oversized-caveats",
+      url: "https://github.com/example/oversized-caveats",
+      name: "Oversized caveats",
+      description: "",
+      descriptionNodes: [],
+      categories: [],
+      platforms: [],
+      caveats: Array.from({ length: 64 }, () => "c".repeat(1_000)),
+      caveatNodes: Array.from({ length: 64 }, () => [
+        { type: "text" as const, text: "c" },
+      ]),
+      health: {
+        manifestValid: true,
+        hasReadme: false,
+        hasLicense: false,
+        hasTests: false,
+        hasTypecheckScript: false,
+        updatedRecently: false,
+      },
+      images: [],
+      videos: [],
+      scannedAt: "2026-09-01T00:00:00.000Z",
+    })
+
+    expect(projected.caveats).toEqual([])
+    expect(projected.caveatNodes).toBeUndefined()
+  })
+
   it("preserves failed security metadata before budgeting bulky fields", () => {
     const projected = projectPluginForDirectory({
       id: "failed-security",

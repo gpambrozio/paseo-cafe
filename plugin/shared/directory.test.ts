@@ -35,6 +35,10 @@ import {
   isTrustedCatalogUrl,
   isValidInstallPath,
   isValidRepo,
+  MAX_DIRECTORY_INLINE_HREF_CHARACTERS,
+  MAX_DIRECTORY_INLINE_LINK_NODES,
+  MAX_DIRECTORY_INLINE_TEXT_CHARACTERS,
+  MAX_DIRECTORY_INLINE_TEXT_NODES,
   migrateDirectorySettings,
   normalizeDirectoryCategories,
   normalizeDirectoryCategory,
@@ -672,6 +676,138 @@ describe("directory README content", () => {
     })
 
     expect(result.success).toBe(false)
+  })
+})
+
+describe("directory inline markdown", () => {
+  const textNode = { type: "text" as const, text: "x" }
+
+  it("accepts only safe links with visible labels", () => {
+    for (const href of [
+      "javascript:alert(1)",
+      "data:text/html,x",
+      "file:///etc/passwd",
+      "intent://scan",
+      "mailto:%20",
+    ]) {
+      expect(
+        directoryEntrySchema.safeParse({
+          ...validEntry,
+          descriptionNodes: [
+            { type: "link", href, children: [{ ...textNode, text: "open" }] },
+          ],
+        }).success,
+        href
+      ).toBe(false)
+    }
+
+    expect(
+      directoryEntrySchema.safeParse({
+        ...validEntry,
+        descriptionNodes: [
+          {
+            type: "link",
+            href: "https://example.com",
+            children: [{ ...textNode, text: "\u200B" }],
+          },
+        ],
+      }).success
+    ).toBe(false)
+    expect(
+      directoryEntrySchema.safeParse({
+        ...validEntry,
+        descriptionNodes: [
+          {
+            type: "link",
+            href: "mailto:author@example.com",
+            children: [{ ...textNode, text: "Email author" }],
+          },
+        ],
+      }).success
+    ).toBe(true)
+  })
+
+  it("rejects aggregate inline node limits", () => {
+    const linkNodes = Array.from(
+      { length: MAX_DIRECTORY_INLINE_LINK_NODES + 1 },
+      () => ({
+        type: "link" as const,
+        href: "https://example.com",
+        children: [textNode],
+      })
+    )
+    expect(
+      directoryEntrySchema.safeParse({
+        ...validEntry,
+        caveats: ["links"],
+        caveatNodes: [linkNodes],
+      }).success
+    ).toBe(false)
+
+    const textGroups = Array.from(
+      { length: Math.ceil((MAX_DIRECTORY_INLINE_TEXT_NODES + 1) / 1_000) },
+      (_, group) =>
+        Array.from(
+          {
+            length: Math.min(
+              1_000,
+              MAX_DIRECTORY_INLINE_TEXT_NODES + 1 - group * 1_000
+            ),
+          },
+          () => textNode
+        )
+    )
+    expect(
+      directoryEntrySchema.safeParse({
+        ...validEntry,
+        caveats: textGroups.map(() => "text"),
+        caveatNodes: textGroups,
+      }).success
+    ).toBe(false)
+  })
+
+  it("rejects aggregate inline character limits", () => {
+    const text = "x".repeat(4_000)
+    const textNodes = Array.from(
+      {
+        length:
+          Math.floor(MAX_DIRECTORY_INLINE_TEXT_CHARACTERS / text.length) + 1,
+      },
+      () => ({ ...textNode, text })
+    )
+    expect(
+      directoryEntrySchema.safeParse({
+        ...validEntry,
+        caveats: ["text"],
+        caveatNodes: [textNodes],
+      }).success
+    ).toBe(false)
+
+    const href = `https://example.com/${"a".repeat(1_980)}`
+    const hrefNodes = Array.from(
+      {
+        length:
+          Math.floor(MAX_DIRECTORY_INLINE_HREF_CHARACTERS / href.length) + 1,
+      },
+      () => ({ type: "link" as const, href, children: [textNode] })
+    )
+    expect(
+      directoryEntrySchema.safeParse({
+        ...validEntry,
+        caveats: ["links"],
+        caveatNodes: [hrefNodes],
+      }).success
+    ).toBe(false)
+  })
+
+  it("requires parsed caveats to align with raw caveats", () => {
+    expect(
+      directoryEntrySchema.safeParse({
+        ...validEntry,
+        caveats: [],
+        caveatNodes: [[textNode]],
+      }).success
+    ).toBe(false)
   })
 })
 

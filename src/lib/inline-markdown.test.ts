@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { inlineMarkdownToPlainText } from "../../plugin/shared/inline-markdown"
-import { parseInlineMarkdown, safeInlineHref } from "./inline-markdown"
+import {
+  inlineMarkdownToPlainText,
+  safeInlineHref,
+} from "../../plugin/shared/inline-markdown"
+import { parseInlineMarkdown } from "./inline-markdown"
 
 /** Shorthand for the text nodes that make up most expectations. */
 function text(value: string, style: Record<string, true> = {}) {
@@ -86,6 +89,9 @@ describe("parseInlineMarkdown", () => {
     ).toEqual([text("Build  status")])
     expect(parseInlineMarkdown("[ ](https://ci.example.com)")).toEqual([
       text(" "),
+    ])
+    expect(parseInlineMarkdown("[\u200B](https://ci.example.com)")).toEqual([
+      text("\u200B"),
     ])
   })
 
@@ -189,6 +195,10 @@ describe("safeInlineHref", () => {
       "https://",
       "mailto:",
       "mailto:   ",
+      "mailto:%20",
+      "mailto:%09",
+      "mailto:%00",
+      "mailto:%E0%A4%A",
       "//evil.example",
       "../../docs/release.md",
       "#usage",

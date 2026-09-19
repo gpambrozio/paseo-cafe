@@ -226,6 +226,7 @@ export function PluginRow({
         ? "1 caveat"
         : `${entry.caveats.length} caveats`
       : undefined
+  const descriptionNodes = directoryDescriptionNodes(entry)
 
   return (
     <Pressable
@@ -290,9 +291,9 @@ export function PluginRow({
           </View>
         ) : null}
       </View>
-      {entry.description ? (
+      {descriptionNodes.length > 0 ? (
         <InlineMarkdown
-          nodes={directoryDescriptionNodes(entry)}
+          nodes={descriptionNodes}
           theme={theme}
           style={styles.description}
           links="text"

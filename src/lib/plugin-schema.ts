@@ -6,6 +6,10 @@ import {
   type CatalogHealthCheck,
   isValidCatalogPackage,
 } from "../../plugin/shared/catalog"
+import {
+  hasVisibleInlineText,
+  safeInlineHref,
+} from "../../plugin/shared/inline-markdown"
 
 /**
  * The enriched, generated record for one plugin. Never hand-authored — the
@@ -151,8 +155,19 @@ export const inlineMarkdownNodeSchema = z.discriminatedUnion("type", [
   inlineMarkdownTextNodeSchema,
   z.object({
     type: z.literal("link"),
-    href: z.string(),
-    children: z.array(inlineMarkdownTextNodeSchema),
+    href: z
+      .string()
+      .refine(
+        (value) => safeInlineHref(value) !== undefined,
+        "Expected a safe absolute inline link"
+      ),
+    children: z
+      .array(inlineMarkdownTextNodeSchema)
+      .refine(
+        (children) =>
+          children.some((child) => hasVisibleInlineText(child.text)),
+        "Expected a visible inline link label"
+      ),
   }),
 ])
 
@@ -224,6 +239,13 @@ export const pluginRecordSchema = z
     scannedAt: z.string(),
   })
   .superRefine((plugin, ctx) => {
+    if (plugin.caveatNodes.length !== plugin.caveats.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["caveatNodes"],
+        message: "Rendered caveats must align with raw caveats",
+      })
+    }
     if (plugin.npm && plugin.package !== plugin.npm.package) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

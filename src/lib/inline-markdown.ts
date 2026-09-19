@@ -2,9 +2,11 @@ import type { Nodes, PhrasingContent, RootContent } from "mdast"
 import remarkGfm from "remark-gfm"
 import remarkParse from "remark-parse"
 import { unified } from "unified"
-import type {
-  InlineMarkdownNode,
-  InlineMarkdownTextNode,
+import {
+  hasVisibleInlineText,
+  type InlineMarkdownNode,
+  type InlineMarkdownTextNode,
+  safeInlineHref,
 } from "../../plugin/shared/inline-markdown"
 
 /**
@@ -35,22 +37,8 @@ export function parseInlineMarkdown(markdown: string): InlineMarkdownNode[] {
   return mergeRuns(out)
 }
 
-/** The destination an `InlineMarkdownLinkNode` may carry, or nothing. */
-export function safeInlineHref(url: string): string | undefined {
-  let parsed: URL
-  try {
-    parsed = new URL(url)
-  } catch {
-    return undefined
-  }
-  if (parsed.protocol === "http:" || parsed.protocol === "https:") {
-    return parsed.hostname ? url : undefined
-  }
-  if (parsed.protocol === "mailto:") {
-    return parsed.pathname.trim() ? url : undefined
-  }
-  return undefined
-}
+// URL and visible-label policy lives in the dependency-free shared model so
+// the scan producer and remote-directory consumer enforce the same contract.
 
 const processor = unified().use(remarkParse).use(remarkGfm)
 
@@ -169,7 +157,7 @@ function projectLink(
     (node): node is InlineMarkdownTextNode => node.type === "text"
   )
 
-  const visible = children.some((child) => child.text.trim() !== "")
+  const visible = children.some((child) => hasVisibleInlineText(child.text))
   if (href && visible) {
     out.push({ type: "link", href, children })
   } else {

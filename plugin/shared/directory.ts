@@ -44,8 +44,12 @@ import {
   normalizeCatalogCategory,
   normalizeCatalogCategoryFilter,
 } from "./catalog"
-import type { InlineMarkdownNode } from "./inline-markdown"
-import { inlineMarkdownFromPlainText } from "./inline-markdown"
+import {
+  hasVisibleInlineText,
+  type InlineMarkdownNode,
+  inlineMarkdownFromPlainText,
+  safeInlineHref,
+} from "./inline-markdown"
 
 export const DEFAULT_DIRECTORY_URL = "https://paseo.cafe/api/plugins"
 
@@ -413,6 +417,11 @@ const directoryManifestSchema = z
     }
   })
 
+export const MAX_DIRECTORY_INLINE_LINK_NODES = 512
+export const MAX_DIRECTORY_INLINE_TEXT_NODES = 4_096
+export const MAX_DIRECTORY_INLINE_TEXT_CHARACTERS = 68_000
+export const MAX_DIRECTORY_INLINE_HREF_CHARACTERS = 32_000
+
 /**
  * plugin/shared/inline-markdown.ts's model, as the API hands it over. Text
  * and href lengths follow the raw fields they render; a node count bound
@@ -429,10 +438,58 @@ const inlineMarkdownNodeSchema = z.discriminatedUnion("type", [
   inlineMarkdownTextNodeSchema,
   z.object({
     type: z.literal("link"),
-    href: z.string().max(2_048),
-    children: z.array(inlineMarkdownTextNodeSchema).max(1_000),
+    href: z
+      .string()
+      .max(2_048)
+      .refine(
+        (value) => safeInlineHref(value) !== undefined,
+        "Expected a safe absolute inline link"
+      ),
+    children: z
+      .array(inlineMarkdownTextNodeSchema)
+      .max(1_000)
+      .refine(
+        (children) =>
+          children.some((child) => hasVisibleInlineText(child.text)),
+        "Expected a visible inline link label"
+      ),
   }),
 ])
+
+type DirectoryInlineMarkdownNode = z.infer<typeof inlineMarkdownNodeSchema>
+
+function measureInlineMarkdown(
+  groups: readonly (readonly DirectoryInlineMarkdownNode[])[]
+): {
+  linkNodes: number
+  textNodes: number
+  textCharacters: number
+  hrefCharacters: number
+} {
+  let linkNodes = 0
+  let textNodes = 0
+  let textCharacters = 0
+  let hrefCharacters = 0
+
+  for (const nodes of groups) {
+    for (const node of nodes) {
+      if (node.type === "text") {
+        textNodes += 1
+        textCharacters += node.text.length
+        continue
+      }
+
+      linkNodes += 1
+      hrefCharacters += node.href.length
+      for (const child of node.children) {
+        textNodes += 1
+        textCharacters += child.text.length
+      }
+    }
+  }
+
+  return { linkNodes, textNodes, textCharacters, hrefCharacters }
+}
 
 const directoryHealthShape = {
   manifestValid: z.boolean().optional(),
@@ -602,6 +659,51 @@ export const directoryEntrySchema = z
       .optional(),
   })
   .superRefine((entry, ctx) => {
+    if (
+      entry.caveatNodes !== undefined &&
+      entry.caveatNodes.length !== entry.caveats.length
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["caveatNodes"],
+        message: "Rendered caveats must align with raw caveats",
+      })
+    }
+
+    const inlineMarkdown = measureInlineMarkdown([
+      entry.descriptionNodes ?? [],
+      ...(entry.caveatNodes ?? []),
+    ])
+    const limits = [
+      {
+        count: inlineMarkdown.linkNodes,
+        maximum: MAX_DIRECTORY_INLINE_LINK_NODES,
+        label: "link nodes",
+      },
+      {
+        count: inlineMarkdown.textNodes,
+        maximum: MAX_DIRECTORY_INLINE_TEXT_NODES,
+        label: "text nodes",
+      },
+      {
+        count: inlineMarkdown.textCharacters,
+        maximum: MAX_DIRECTORY_INLINE_TEXT_CHARACTERS,
+        label: "text characters",
+      },
+      {
+        count: inlineMarkdown.hrefCharacters,
+        maximum: MAX_DIRECTORY_INLINE_HREF_CHARACTERS,
+        label: "link destination characters",
+      },
+    ]
+    for (const { count, maximum, label } of limits) {
+      if (count <= maximum) continue
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["descriptionNodes"],
+        message: `Inline markdown exceeds ${maximum} ${label}`,
+      })
+    }
     if (entry.npm && !entry.package) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
