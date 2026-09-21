@@ -25,6 +25,10 @@ import {
   hasCompleteCatalogNpmMetrics,
 } from "../../plugin/shared/catalog"
 
+/**
+ * Downloads for npm-backed plugins, stars otherwise. Renders nothing when the
+ * catalog has neither, rather than showing a misleading zero.
+ */
 export function PluginPopularity({ plugin }: { plugin: PluginRecord }) {
   const popularity = getCatalogPopularityMetric(plugin)
   if (!popularity) return null

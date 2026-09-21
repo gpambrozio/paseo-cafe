@@ -1,6 +1,7 @@
 import { PluginCard, type PluginDateBadge } from "@/components/plugin-card"
 import type { PluginRecord } from "@/lib/plugin-schema"
 
+/** Responsive grid of plugin cards, all sharing one date-badge mode. */
 export function PluginGrid({
   plugins,
   dateBadge,

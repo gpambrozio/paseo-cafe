@@ -28,6 +28,7 @@ vi.mock("react-native", () => ({
   View: () => null,
 }))
 
+/** A schema-valid entry carrying only the health block under test. */
 function entryWithHealth(health: DirectoryEntry["health"]): DirectoryEntry {
   return directoryEntrySchema.parse({
     id: "health-test",
@@ -38,6 +39,7 @@ function entryWithHealth(health: DirectoryEntry["health"]): DirectoryEntry {
   })
 }
 
+/** Every string rendered anywhere in an element tree, depth first. */
 function collectText(node: ReactNode, into: string[] = []): string[] {
   for (const child of React.Children.toArray(node)) {
     if (typeof child === "string") into.push(child)
@@ -48,6 +50,7 @@ function collectText(node: ReactNode, into: string[] = []): string[] {
   return into
 }
 
+/** Whether an element of the given component type appears in the tree. */
 function containsElementType(node: ReactNode, type: unknown): boolean {
   return React.Children.toArray(node).some((child) => {
     if (!React.isValidElement<{ children?: ReactNode }>(child)) return false

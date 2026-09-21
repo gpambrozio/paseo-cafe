@@ -44,6 +44,11 @@ interface BadgeTone {
   text: string
   color: BadgeColor
 }
+/**
+ * The popularity figure worth showing for one entry: npm downloads where the
+ * catalog has complete npm metrics, otherwise Git stars. Undefined when
+ * neither is available, so the row omits the badge rather than showing zero.
+ */
 export function getPluginRowPopularity(entry: DirectoryEntry):
   | {
       source: "npm" | "git"
@@ -65,6 +70,10 @@ export function getPluginRowPopularity(entry: DirectoryEntry):
   }
 }
 
+/**
+ * The single worst thing worth saying about an entry's health, or null when
+ * there is nothing to flag. A scan failure outranks incomplete checks.
+ */
 export function getHealthBadge(entry: DirectoryEntry): BadgeTone | null {
   if (entry.scanError) {
     return { text: "Scan issue", color: "danger" }
@@ -85,9 +94,13 @@ export function getHealthBadge(entry: DirectoryEntry): BadgeTone | null {
   return { text: "Health OK", color: "success" }
 }
 
-// Deliberately no per-row Install button: with the whole card opening the
-// detail page (see onPress below), a nested button here fights the card's
-// own press target. Install lives on the detail page instead.
+/**
+ * One entry in the companion's directory list.
+ *
+ * Deliberately no per-row Install button: with the whole card opening the
+ * detail page (see onPress below), a nested button here fights the card's
+ * own press target. Install lives on the detail page instead.
+ */
 export function PluginRow({
   entry,
   theme,

@@ -14,6 +14,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 const INTEGRITY = `sha512-${"a".repeat(86)}`
 
+/** An npm-backed record listed long before the release it was published. */
 function npmPlugin() {
   return pluginRecordSchema.parse({
     id: "example",

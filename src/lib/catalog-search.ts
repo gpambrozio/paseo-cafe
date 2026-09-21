@@ -37,6 +37,7 @@ export const HOME_SEARCH_DEFAULT = {
 const sortValues = ["popular", "recent", "added", "az"] as const
 export type SortValue = (typeof sortValues)[number]
 
+/** Maps free-form category input onto the taxonomy, or "" when it names none. */
 function normalizeCategoryFilter(category: string): Category | "" {
   const normalized = category.trim().toLowerCase().replace(/\s+/g, "-")
   return Object.hasOwn(CATEGORY_LABELS, normalized)
@@ -44,6 +45,7 @@ function normalizeCategoryFilter(category: string): Category | "" {
     : ""
 }
 
+/** Maps free-form platform input onto the taxonomy, or "" when it names none. */
 function normalizePlatformFilter(platform: string): Platform | "" {
   const normalized = platform.trim().toLowerCase()
   return (PLATFORMS as readonly string[]).includes(normalized)
@@ -79,6 +81,11 @@ export interface CatalogSearch {
   page: number
 }
 
+/**
+ * Resolves raw search params into a fully populated shape. Every field falls
+ * back to HOME_SEARCH_DEFAULT, so a retired or malformed value degrades to
+ * the default view rather than failing the route.
+ */
 export function parseCatalogSearch(search: unknown): CatalogSearch {
   const parsed = routeSearchSchema.parse(search)
   return {
@@ -90,6 +97,7 @@ export function parseCatalogSearch(search: unknown): CatalogSearch {
   }
 }
 
+/** Keeps a requested page within range once filters shrink the result set. */
 export function clampCatalogPage(page: number, totalPages: number): number {
   return Math.min(page, Math.max(1, totalPages))
 }
@@ -118,10 +126,20 @@ const collator = new Intl.Collator(undefined, {
   sensitivity: "base",
 })
 
+/**
+ * Last-resort ordering shared by every sort, so entries whose sort key ties
+ * still land in a stable order. Uses Intl.Collator, which the companion does
+ * not — see the note in plugin/client/sort.ts.
+ */
 function comparePluginsByName(a: PluginRecord, b: PluginRecord): number {
   return collator.compare(a.name, b.name) || collator.compare(a.id, b.id)
 }
 
+/**
+ * Returns a sorted copy; the input array is left untouched. "popular",
+ * "recent" and "az" group npm-backed plugins ahead of Git-only ones via
+ * compareCatalogSource; "added" deliberately does not.
+ */
 export function sortPlugins(
   plugins: PluginRecord[],
   sort: SortValue
@@ -145,6 +163,10 @@ export function sortPlugins(
   })
 }
 
+/**
+ * Free-text match across every field a reader might search by, including
+ * contributed theme names that appear nowhere else in the plugin's metadata.
+ */
 export function matchesPluginQuery(
   plugin: PluginRecord,
   query: string

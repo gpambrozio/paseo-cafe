@@ -7,6 +7,7 @@ const NO_INSTALLATIONS = new Map<string, readonly InstalledPlugin[]>()
 const NPM_VERSION = "1.0.0"
 const NPM_INTEGRITY = `sha512-${"a".repeat(86)}`
 
+/** A schema-valid entry; passing npmPublishedAt makes it npm-backed. */
 function entry(
   id: string,
   addedAt: string,

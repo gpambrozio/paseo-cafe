@@ -9,6 +9,7 @@ import {
 } from "./catalog-search"
 import type { PluginRecord } from "./plugin-schema"
 
+/** A minimal Git-only record; overrides supply whatever the case needs. */
 function plugin(
   id: string,
   overrides: Partial<PluginRecord> = {}

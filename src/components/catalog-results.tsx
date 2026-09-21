@@ -15,6 +15,10 @@ interface CatalogResultsProps {
   totalCount: number
 }
 
+/**
+ * The paginated "All plugins" section below the highlight sections, including
+ * the empty state and the prev/next controls.
+ */
 export function CatalogResults({
   plugins,
   search,

@@ -18,10 +18,16 @@ import type { PluginRowDateBadge } from "./PluginRow"
 
 export type SortMode = DirectoryBrowseSettings["sort"]
 
+/** Trimmed and lowercased so ordering ignores casing and stray whitespace. */
 function normalizeText(value: string | undefined): string {
   return value?.trim().toLowerCase() ?? ""
 }
 
+/**
+ * Plain lexicographic comparison, with a missing value ordering as empty.
+ * Deliberately not Intl.Collator: see the note in compareEntries about how
+ * this differs from the website.
+ */
 function compareText(a: string | undefined, b: string | undefined): number {
   const left = normalizeText(a)
   const right = normalizeText(b)
@@ -30,6 +36,7 @@ function compareText(a: string | undefined, b: string | undefined): number {
   return 0
 }
 
+/** Whether any installation of this entry is waiting on a newer version. */
 function entryHasUpdate(
   entry: DirectoryEntry,
   installationByEntryId: ReadonlyMap<string, readonly InstalledPlugin[]>
@@ -42,6 +49,11 @@ function entryHasUpdate(
   )
 }
 
+/**
+ * Last-resort ordering shared by every sort mode, so entries whose sort key
+ * ties still land in a stable, repeatable order instead of shuffling between
+ * renders. `repo` separates same-named plugins from different owners.
+ */
 function compareIdentity(a: DirectoryEntry, b: DirectoryEntry): number {
   return (
     compareText(a.name, b.name) ||
@@ -62,6 +74,11 @@ export function dateBadgeForSortMode(
   return undefined
 }
 
+/**
+ * Orders two entries for one sort mode. Every mode except "recently-added"
+ * sits behind compareDirectorySource, which groups npm-backed entries ahead
+ * of Git-only ones before any other key is considered.
+ */
 function compareEntries(
   a: DirectoryEntry,
   b: DirectoryEntry,
@@ -109,6 +126,7 @@ function compareEntries(
   return compareIdentity(a, b)
 }
 
+/** Returns a sorted copy; the input array is left untouched. */
 export function sortEntries(
   entries: readonly DirectoryEntry[],
   sortMode: SortMode,
