@@ -12,6 +12,7 @@ import {
   CATALOG_HEALTH_KEYS,
   CATALOG_HEALTH_LABELS,
   CATALOG_PLATFORM_LABELS,
+  CATALOG_RECENCY_LABEL,
   CATALOG_THEME_APPEARANCES,
   CATALOG_THEME_MAX_PER_PLUGIN,
   CATALOG_VERSION_MAX_LENGTH,
@@ -144,15 +145,22 @@ export const normalizeDirectoryCategory = normalizeCatalogCategory
 
 /** Canonicalizes catalog categories while preserving their stable slug identity. */
 export const normalizeDirectoryCategories = normalizeCatalogCategories
+// "recent" leads with the newest npm releases; "recently-added" ignores
+// release dates and orders strictly by catalog listing date. Mirrors the
+// website's "recent"/"added" sorts — see src/lib/catalog-search.ts.
 export const DIRECTORY_SORT_MODES = [
   "updates-first",
   "popular",
+  "recent",
   "recently-added",
   "a-z",
 ] as const
 
-/** Shared source-aware recency sorting with the website — see ./catalog.ts. */
+/** Strict catalog-listing-date sorting, shared with the website — see ./catalog.ts. */
 export const DIRECTORY_ADDED_AT_LABEL = CATALOG_ADDED_AT_LABEL
+
+/** Source-aware recency sorting, shared with the website — see ./catalog.ts. */
+export const DIRECTORY_RECENCY_LABEL = CATALOG_RECENCY_LABEL
 export const compareDirectoryAddedAt = compareCatalogAddedAt
 export const compareDirectoryPopularity = compareCatalogPopularity
 export const compareDirectoryRecency = compareCatalogRecency
@@ -178,8 +186,16 @@ export const directoryBrowseSettingsSchema = z.object({
   query: z.string().max(200).default(""),
   categories: z.array(z.enum(DIRECTORY_CATEGORIES)).default([]),
   platforms: z.array(z.string()).default([]),
-  status: z.enum(DIRECTORY_STATUS_FILTERS).default("all"),
-  sort: z.enum(DIRECTORY_SORT_MODES).default("updates-first"),
+  status: z.enum(DIRECTORY_STATUS_FILTERS).catch("all").default("all"),
+  // Tolerant on purpose: browse state is nested inside the settings document,
+  // so a sort slug this build does not know would otherwise invalidate the
+  // whole document — taking directoryUrl, previewOptIns and pendingSelfUpdate
+  // down with it. A build that meets a newer slug falls back to the default
+  // ordering instead of losing every setting. Same for status above.
+  sort: z
+    .enum(DIRECTORY_SORT_MODES)
+    .catch("updates-first")
+    .default("updates-first"),
   lastOpenedPluginId: z.string().nullable().default(null),
 })
 
@@ -265,6 +281,17 @@ export function migrateDirectorySettings(
     ...previous,
     browse: {
       ...browse,
+      // Only reached below v4, where "recent" named the retired
+      // repository-activity sort — not the source-aware sort that reuses the
+      // slug from v4 on.
+      //
+      // A stored "recently-added" is deliberately left alone, at any version.
+      // It now orders strictly by listing date rather than leading with npm
+      // releases, so someone who picked it does see a different order. The
+      // slug always named the listing date; this makes it mean what it says,
+      // and the ordering it used to give is still one chip away under
+      // "recent". Remapping it to "recent" would instead permanently bind a
+      // self-describing slug to the sort it does not describe.
       ...(browse.sort === "recent" ? { sort: "updates-first" } : {}),
     },
   }
@@ -290,6 +317,15 @@ export const directorySettings = defineSettings({
   scope: "host",
   // Keep v4: the optional evidence field is backward-compatible, so Preview
   // users can still return to an older stable build that reads the v4 envelope.
+  //
+  // Adding a sort slug widens an enum inside this envelope without changing
+  // its version, so two builds can both call their schema v4 while accepting
+  // different sort values. That is deliberate. Bumping to v5 would not rescue
+  // a rollback — an older build cannot read a v5 envelope either — and it
+  // would cost every Preview user their settings on rollback rather than only
+  // those who picked a slug the older build lacks. The `.catch()` on
+  // browse.sort above is the durable fix, and it protects every build that
+  // ships it from the next slug added here.
   version: 4,
   schema: z.object({
     directoryUrl: catalogUrlSchema.default(DEFAULT_DIRECTORY_URL),

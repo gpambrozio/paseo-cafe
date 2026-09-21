@@ -451,8 +451,14 @@ export const CATALOG_HEALTH_LABELS: Record<CatalogHealthCheck, string> = {
  * so it can't be backdated or nudged forward by a submitter, and it means
  * the same thing on both surfaces. It is absent when the history isn't
  * available (a shallow clone, or an entry that isn't committed yet).
+ *
+ * This label names the strict listing-date sort (compareCatalogAddedAt).
+ * CATALOG_RECENCY_LABEL below names the source-aware one that prefers an
+ * npm release date; the two are deliberately separate options on both
+ * surfaces, because "newest to the directory" and "most recently released"
+ * answer different questions.
  */
-export const CATALOG_ADDED_AT_LABEL = "Recent"
+export const CATALOG_ADDED_AT_LABEL = "Recently added"
 
 export interface CatalogAddedAt {
   addedAt?: string
@@ -550,6 +556,9 @@ export function compareCatalogPopularity(
   }
   return (b.repoMeta?.stars ?? 0) - (a.repoMeta?.stars ?? 0)
 }
+
+/** Names the source-aware recency sort — see CATALOG_ADDED_AT_LABEL. */
+export const CATALOG_RECENCY_LABEL = "Recently released"
 
 /** Latest npm releases first, then Git-only entries by catalog listing date. */
 export function compareCatalogRecency(

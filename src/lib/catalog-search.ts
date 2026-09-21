@@ -1,4 +1,5 @@
 import { z } from "zod"
+import type { PluginDateBadge } from "@/components/plugin-card"
 import type { PluginRecord } from "@/lib/plugin-schema"
 import {
   CATEGORY_LABELS,
@@ -8,6 +9,8 @@ import {
 } from "@/lib/registry-schema"
 import {
   CATALOG_ADDED_AT_LABEL,
+  CATALOG_RECENCY_LABEL,
+  compareCatalogAddedAt,
   compareCatalogPopularity,
   compareCatalogRecency,
   compareCatalogSource,
@@ -28,7 +31,10 @@ export const HOME_SEARCH_DEFAULT = {
   page: 1,
 } as const
 
-const sortValues = ["popular", "added", "az"] as const
+// "recent" leads with the newest npm releases; "added" ignores release dates
+// and orders strictly by when the catalog accepted the listing. Unknown
+// values fall back to the default below, so retired names keep resolving.
+const sortValues = ["popular", "recent", "added", "az"] as const
 export type SortValue = (typeof sortValues)[number]
 
 function normalizeCategoryFilter(category: string): Category | "" {
@@ -90,11 +96,22 @@ export function clampCatalogPage(page: number, totalPages: number): number {
 
 export const sortLabels: Record<SortValue, string> = {
   popular: "Popular",
+  recent: CATALOG_RECENCY_LABEL,
   added: CATALOG_ADDED_AT_LABEL,
   az: "A–Z",
 }
 
-export const sortOptions: SortValue[] = ["popular", "added", "az"]
+export const sortOptions: SortValue[] = ["popular", "recent", "added", "az"]
+
+/**
+ * Which date the results are ordered by, so a card can report the date it is
+ * actually sorted on rather than whichever one it happens to have.
+ */
+export function dateBadgeForSort(sort: SortValue): PluginDateBadge | undefined {
+  if (sort === "recent") return "recency"
+  if (sort === "added") return "added"
+  return undefined
+}
 
 const collator = new Intl.Collator(undefined, {
   numeric: true,
@@ -113,8 +130,13 @@ export function sortPlugins(
     switch (sort) {
       case "popular":
         return compareCatalogPopularity(a, b) || comparePluginsByName(a, b)
-      case "added":
+      case "recent":
         return compareCatalogRecency(a, b) || comparePluginsByName(a, b)
+      case "added":
+        // Deliberately skips the compareCatalogSource partition the other
+        // sorts apply: ordering by listing date only means anything if a
+        // Git-only plugin listed today can outrank an older npm one.
+        return compareCatalogAddedAt(a, b) || comparePluginsByName(a, b)
       case "az":
         return compareCatalogSource(a, b) || comparePluginsByName(a, b)
       default:

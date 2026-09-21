@@ -17,13 +17,11 @@ import type {
   PendingSelfUpdate,
 } from "../shared/directory"
 import {
-  compareDirectoryPopularity,
-  compareDirectoryRecency,
-  compareDirectorySource,
   DIRECTORY_ADDED_AT_LABEL,
   DIRECTORY_CATEGORIES,
   DIRECTORY_CATEGORY_LABELS,
   DIRECTORY_PLATFORM_LABELS,
+  DIRECTORY_RECENCY_LABEL,
   directoryApplySelfUpdateRpc,
   directoryBrowseSettingsEqual,
   directoryInstallRpc,
@@ -46,6 +44,7 @@ import {
   resolveSelfUpdateRecoveryState,
   startPreparedSelfUpdate,
 } from "./self-update"
+import { dateBadgeForSortMode, type SortMode, sortEntries } from "./sort"
 import { ThemePreviewCard } from "./ThemePreviewCard"
 import { CAFE_CONTROL_RADIUS, CAFE_MONO_FONT } from "./visual"
 
@@ -300,8 +299,6 @@ type UpdateResult = {
   selfUpdateRequestedAt?: string
 }
 
-type SortMode = DirectoryBrowseSettings["sort"]
-
 interface SortOption {
   value: SortMode
   label: string
@@ -310,91 +307,12 @@ interface SortOption {
 const SORT_OPTIONS: readonly SortOption[] = [
   { value: "updates-first", label: "Updates first" },
   { value: "popular", label: "Popular" },
+  { value: "recent", label: DIRECTORY_RECENCY_LABEL },
   { value: "recently-added", label: DIRECTORY_ADDED_AT_LABEL },
   { value: "a-z", label: "A–Z" },
 ]
 
 const FEATURED_LIMIT = 5
-
-function normalizeText(value: string | undefined): string {
-  return value?.trim().toLowerCase() ?? ""
-}
-
-function compareText(a: string | undefined, b: string | undefined): number {
-  const left = normalizeText(a)
-  const right = normalizeText(b)
-  if (left < right) return -1
-  if (left > right) return 1
-  return 0
-}
-
-function entryHasUpdate(
-  entry: DirectoryEntry,
-  installationByEntryId: ReadonlyMap<string, readonly InstalledPlugin[]>
-): boolean {
-  return (
-    installationByEntryId
-      .get(entry.id)
-      ?.some((installation) => installation.updateState === "available") ??
-    false
-  )
-}
-
-function compareEntries(
-  a: DirectoryEntry,
-  b: DirectoryEntry,
-  sortMode: SortMode,
-  installationByEntryId: ReadonlyMap<string, readonly InstalledPlugin[]>
-): number {
-  const source = compareDirectorySource(a, b)
-  if (source !== 0) return source
-
-  if (sortMode === "updates-first") {
-    return (
-      Number(entryHasUpdate(b, installationByEntryId)) -
-        Number(entryHasUpdate(a, installationByEntryId)) ||
-      compareDirectoryPopularity(a, b) ||
-      compareText(a.name, b.name) ||
-      compareText(a.repo, b.repo) ||
-      compareText(a.id, b.id)
-    )
-  }
-
-  if (sortMode === "popular") {
-    return (
-      compareDirectoryPopularity(a, b) ||
-      compareText(a.name, b.name) ||
-      compareText(a.repo, b.repo) ||
-      compareText(a.id, b.id)
-    )
-  }
-
-  if (sortMode === "recently-added") {
-    return (
-      compareDirectoryRecency(a, b) ||
-      compareDirectoryPopularity(a, b) ||
-      compareText(a.name, b.name) ||
-      compareText(a.repo, b.repo) ||
-      compareText(a.id, b.id)
-    )
-  }
-
-  return (
-    compareText(a.name, b.name) ||
-    compareText(a.repo, b.repo) ||
-    compareText(a.id, b.id)
-  )
-}
-
-function sortEntries(
-  entries: readonly DirectoryEntry[],
-  sortMode: SortMode,
-  installationByEntryId: ReadonlyMap<string, readonly InstalledPlugin[]>
-): DirectoryEntry[] {
-  return [...entries].sort((a, b) =>
-    compareEntries(a, b, sortMode, installationByEntryId)
-  )
-}
 
 function SortRow({
   options,
@@ -1191,12 +1109,12 @@ export function DirectorySurface({ theme, layout }: PluginSurfaceProps) {
   // Entries with no usable listing date are left out entirely: a catalog that
   // doesn't publish valid addedAt values shows no section rather than an
   // arbitrary five.
-  const recentlyAddedHighlights = useMemo(
+  const recentHighlights = useMemo(
     () =>
       defaultBrowseState
         ? sortEntries(
             filtered.filter(isDirectoryRecencyKnown),
-            "recently-added",
+            "recent",
             installationByEntryId
           ).slice(0, FEATURED_LIMIT)
         : [],
@@ -1562,7 +1480,7 @@ export function DirectorySurface({ theme, layout }: PluginSurfaceProps) {
             {defaultBrowseState &&
             (themeHighlights.length > 0 ||
               popularHighlights.length > 0 ||
-              recentlyAddedHighlights.length > 0) ? (
+              recentHighlights.length > 0) ? (
               <View style={styles.featuredBlock}>
                 {themeHighlights.length > 0 ? (
                   <View style={styles.featuredSection}>
@@ -1622,24 +1540,24 @@ export function DirectorySurface({ theme, layout }: PluginSurfaceProps) {
                     </View>
                   </View>
                 ) : null}
-                {recentlyAddedHighlights.length > 0 ? (
+                {recentHighlights.length > 0 ? (
                   <View style={styles.featuredSection}>
                     <View style={styles.sectionHeading}>
                       <Text
                         accessibilityRole="header"
                         style={styles.featuredHeader}
                       >
-                        Recent
+                        {DIRECTORY_RECENCY_LABEL}
                       </Text>
                       <Text style={styles.featuredDescription}>
                         Latest npm releases, followed by newest Git listings.
                       </Text>
                     </View>
                     <View style={styles.featuredItems}>
-                      {recentlyAddedHighlights.map((item) => (
+                      {recentHighlights.map((item) => (
                         <PluginRow
-                          key={`recently-added-${item.id}`}
-                          showAddedDate
+                          key={`recent-${item.id}`}
+                          dateBadge="recency"
                           entry={item}
                           theme={theme}
                           installations={
@@ -1672,7 +1590,7 @@ export function DirectorySurface({ theme, layout }: PluginSurfaceProps) {
             theme={theme}
             installations={installationByEntryId.get(item.id) ?? []}
             compact={layout.compact}
-            showAddedDate={sortMode === "recently-added"}
+            dateBadge={dateBadgeForSortMode(sortMode)}
             onPress={() => openPlugin(item)}
           />
         )}

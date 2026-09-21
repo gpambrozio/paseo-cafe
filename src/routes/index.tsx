@@ -22,7 +22,10 @@ import {
 } from "@/lib/registry-schema"
 import { seo } from "@/lib/seo"
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site"
-import { isCatalogRecencyKnown } from "../../plugin/shared/catalog"
+import {
+  CATALOG_RECENCY_LABEL,
+  isCatalogRecencyKnown,
+} from "../../plugin/shared/catalog"
 
 const SECTION_LIMIT = 6
 const PAGE_SIZE = 12
@@ -177,9 +180,9 @@ function App() {
   )
   // npm entries use their exact version publication date; Git-only entries
   // retain their catalog-listing date. Unknown dates never enter this section.
-  const recentlyAdded = useMemo(
+  const recent = useMemo(
     () =>
-      sortPlugins(plugins.filter(isCatalogRecencyKnown), "added").slice(
+      sortPlugins(plugins.filter(isCatalogRecencyKnown), "recent").slice(
         0,
         SECTION_LIMIT
       ),
@@ -255,9 +258,9 @@ function App() {
                 plugins={popular}
               />
               <FeaturedSection
-                title="Recent"
+                title={CATALOG_RECENCY_LABEL}
                 description="Latest npm releases, followed by newest Git listings."
-                plugins={recentlyAdded}
+                plugins={recent}
               />
             </div>
           ) : null}

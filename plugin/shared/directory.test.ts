@@ -8,6 +8,7 @@ import {
   DEFAULT_DIRECTORY_BROWSE_SETTINGS,
   DIRECTORY_ADDED_AT_LABEL,
   DIRECTORY_CATEGORY_LABELS,
+  DIRECTORY_RECENCY_LABEL,
   type DirectoryCategory,
   directoryAttachments,
   directoryBrowseSettingsEqual,
@@ -722,14 +723,34 @@ describe("directory listing dates", () => {
     ).toEqual(["newer", "older", "unknown"])
   })
 
-  it("persists the shared sort mode under the same label as the website", () => {
+  it("persists both date sort modes under the same labels as the website", () => {
     expect(
       directoryBrowseSettingsSchema.parse({ sort: "recently-added" }).sort
     ).toBe("recently-added")
-    expect(DIRECTORY_ADDED_AT_LABEL).toBe("Recent")
+    expect(directoryBrowseSettingsSchema.parse({ sort: "recent" }).sort).toBe(
+      "recent"
+    )
+    expect(DIRECTORY_ADDED_AT_LABEL).toBe("Recently added")
+    expect(DIRECTORY_RECENCY_LABEL).toBe("Recently released")
+  })
+
+  it("still migrates a pre-v4 'recent' setting off the retired sort", () => {
+    // "recent" is a valid mode again, but only from v4 on: an older envelope
+    // carrying it still means the retired repository-activity sort.
     expect(
-      directoryBrowseSettingsSchema.safeParse({ sort: "recent" }).success
-    ).toBe(false)
+      (
+        migrateDirectorySettings({ browse: { sort: "recent" } }, 3) as {
+          browse: { sort: string }
+        }
+      ).browse.sort
+    ).toBe("updates-first")
+    expect(
+      (
+        migrateDirectorySettings({ browse: { sort: "recent" } }, 4) as {
+          browse: { sort: string }
+        }
+      ).browse.sort
+    ).toBe("recent")
   })
 })
 

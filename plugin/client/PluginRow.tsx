@@ -20,13 +20,21 @@ import {
 import { InlineMarkdown } from "./InlineMarkdown"
 import { CAFE_CONTROL_RADIUS, CAFE_MONO_FONT } from "./visual"
 
+/**
+ * Which date, if any, the list is ordered by: "recency" follows the
+ * source-aware sort (an npm release date where there is one, otherwise the
+ * listing date), "added" always shows the listing date. Mirrors the
+ * website's PluginCard — see src/components/plugin-card.tsx.
+ */
+export type PluginRowDateBadge = "recency" | "added"
+
 interface PluginRowProps {
   entry: DirectoryEntry
   theme: PluginTheme
   compact: boolean
   installations: readonly InstalledPlugin[]
-  /** Show when the catalog listed this plugin while ordered by that date. */
-  showAddedDate?: boolean
+  /** Shows a date only when the list is ordered by that same date. */
+  dateBadge?: PluginRowDateBadge
   onPress: () => void
 }
 
@@ -85,7 +93,7 @@ export function PluginRow({
   theme,
   compact,
   installations,
-  showAddedDate,
+  dateBadge,
   onPress,
 }: PluginRowProps) {
   const styles = useMemo(
@@ -211,11 +219,12 @@ export function PluginRow({
         : undefined
 
   const popularity = getPluginRowPopularity(entry)
-  const addedBadge = showAddedDate
-    ? hasCompleteDirectoryNpmMetrics(entry)
+  const dateBadgeText =
+    dateBadge === "recency" && hasCompleteDirectoryNpmMetrics(entry)
       ? getDirectoryPublishedDateBadge(entry)
-      : getDirectoryAddedDateBadge(entry)
-    : undefined
+      : dateBadge
+        ? getDirectoryAddedDateBadge(entry)
+        : undefined
   const healthBadge = getHealthBadge(entry)
   const versionLabel = formatDirectoryVersion(entry.version)
   const compatibilityLabel = entry.paseoVersionRequirement
@@ -269,9 +278,9 @@ export function PluginRow({
             <Text style={styles.metaBadgeText("muted")}>{popularity.text}</Text>
           </View>
         ) : null}
-        {addedBadge ? (
+        {dateBadgeText ? (
           <View style={styles.metaBadge}>
-            <Text style={styles.metaBadgeText("muted")}>{addedBadge}</Text>
+            <Text style={styles.metaBadgeText("muted")}>{dateBadgeText}</Text>
           </View>
         ) : null}
         <View style={styles.metaBadge}>

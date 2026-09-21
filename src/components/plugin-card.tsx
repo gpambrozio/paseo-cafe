@@ -52,13 +52,20 @@ export function PluginPopularity({ plugin }: { plugin: PluginRecord }) {
   )
 }
 
-/** Shows the catalog listing date only when the results are ordered by it. */
+/**
+ * Which date, if any, the results are ordered by: "recency" follows the
+ * source-aware sort (an npm release date where there is one, otherwise the
+ * listing date), "added" always shows the listing date.
+ */
+export type PluginDateBadge = "recency" | "added"
+
+/** Shows a date only when the results are ordered by that same date. */
 export function PluginCard({
   plugin,
-  showAddedDate,
+  dateBadge,
 }: {
   plugin: PluginRecord
-  showAddedDate?: boolean
+  dateBadge?: PluginDateBadge
 }) {
   const healthIsComplete =
     plugin.health.manifestValid &&
@@ -120,12 +127,12 @@ export function PluginCard({
                 {plugin.owner.login}
               </span>
             ) : null}
-            {showAddedDate && hasNpmMetrics ? (
+            {dateBadge === "recency" && hasNpmMetrics ? (
               <Badge variant="secondary">
                 Published&nbsp;
                 <ReaderDate iso={plugin.npm.publishedAt} />
               </Badge>
-            ) : showAddedDate && plugin.addedAt ? (
+            ) : dateBadge && plugin.addedAt ? (
               <Badge variant="secondary">
                 Added&nbsp;
                 <ReaderDate iso={plugin.addedAt} />

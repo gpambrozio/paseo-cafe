@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  dateBadgeForSort,
   matchesPluginQuery,
   parseCatalogSearch,
   sortLabels,
@@ -85,16 +86,37 @@ describe("sortPlugins by listing date", () => {
     expect(sorted.map((entry) => entry.id)).toEqual(["listed", "broken"])
   })
 
-  it("offers listing-date sorting and retires repository-activity sorting", () => {
-    expect(sortOptions).toEqual(["popular", "added", "az"])
-    expect(sortLabels.added).toBe("Recent")
+  it("offers both date sorts and retires repository-activity sorting", () => {
+    expect(sortOptions).toEqual(["popular", "recent", "added", "az"])
+    expect(sortLabels.recent).toBe("Recently released")
+    expect(sortLabels.added).toBe("Recently added")
     expect(parseCatalogSearch({ sort: "added" }).sort).toBe("added")
+    expect(parseCatalogSearch({ sort: "recent" }).sort).toBe("recent")
     expect(parseCatalogSearch({ sort: "updated" }).sort).toBe("popular")
   })
 })
 
+describe("catalog date badge", () => {
+  // A card must report the date it is actually ordered by: showing an npm
+  // release date under "Recently added" would explain the wrong ordering.
+  it("follows the sort the results are ordered by", () => {
+    expect(dateBadgeForSort("recent")).toBe("recency")
+    expect(dateBadgeForSort("added")).toBe("added")
+  })
+
+  it("shows no date for sorts that are not ordered by one", () => {
+    expect(dateBadgeForSort("popular")).toBeUndefined()
+    expect(dateBadgeForSort("az")).toBeUndefined()
+  })
+})
+
 describe("npm-first catalog sorting", () => {
-  const npm = (id: string, downloadsLast30Days: number, publishedAt: string) =>
+  const npm = (
+    id: string,
+    downloadsLast30Days: number,
+    publishedAt: string,
+    addedAt?: string
+  ) =>
     plugin(id, {
       npm: {
         package: id,
@@ -103,6 +125,7 @@ describe("npm-first catalog sorting", () => {
         downloadsLast30Days,
         publishedAt,
       },
+      ...(addedAt ? { addedAt } : {}),
     })
 
   it("ranks npm downloads then publication date before Git stars", () => {
@@ -173,7 +196,7 @@ describe("npm-first catalog sorting", () => {
       npm("a-npm", 1, "2026-09-11T00:00:00.000Z"),
     ]
 
-    expect(sortPlugins(entries, "added").map((entry) => entry.id)).toEqual([
+    expect(sortPlugins(entries, "recent").map((entry) => entry.id)).toEqual([
       "a-npm",
       "z-npm",
       "a-git",
@@ -182,6 +205,24 @@ describe("npm-first catalog sorting", () => {
       "a-npm",
       "z-npm",
       "a-git",
+    ])
+  })
+
+  it("lets a newer Git listing outrank an older npm one under 'added'", () => {
+    // The whole point of keeping "added" separate from "recent": it answers
+    // "what is new to the directory", so the npm-first grouping must not
+    // apply, and an npm entry is ranked by when it was listed rather than
+    // by when its release was published.
+    const entries = [
+      plugin("a-git", { addedAt: "2026-09-10T00:00:00.000Z" }),
+      npm("z-npm", 1, "2026-09-01T00:00:00.000Z", "2026-08-01T00:00:00.000Z"),
+      npm("a-npm", 1, "2026-09-11T00:00:00.000Z", "2026-07-01T00:00:00.000Z"),
+    ]
+
+    expect(sortPlugins(entries, "added").map((entry) => entry.id)).toEqual([
+      "a-git",
+      "z-npm",
+      "a-npm",
     ])
   })
 })

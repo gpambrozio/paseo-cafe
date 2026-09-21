@@ -97,7 +97,8 @@ export const directoryPluginSchema = z.object({
   scanError: z.string().max(4_000).optional(),
   // Git-only plugins use their catalog listing date. npm-backed plugins carry
   // their version publication date in npm.publishedAt.
-  // The companion's Recent view uses the source-appropriate timestamp.
+  // "Recently released" uses the source-appropriate timestamp of the two;
+  // "Recently added" always uses this listing date.
   addedAt: z.iso.datetime({ offset: true }).optional(),
   scannedAt: z.string().max(100),
   health: pluginHealthSchema,
