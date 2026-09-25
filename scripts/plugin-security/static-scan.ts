@@ -298,6 +298,8 @@ function validateManifest(
         )
       )
     const req = parsed.requirements
+    // Paseo 0.9 added the optional manifest `description`; 0.8 rejects it.
+    let requiresPaseo09 = false
     if (req === undefined) {
       findings.push(
         finding(
@@ -339,6 +341,7 @@ function validateManifest(
         typeof paseo === "string" && paseo.trim().length > 0
           ? semver.validRange(paseo, { loose: false })
           : null
+      requiresPaseo09 = range !== null && !semver.intersects(range, "<0.9.0")
       if (!range || !semver.intersects(range, ">=0.8.0"))
         findings.push(
           finding(
@@ -379,7 +382,8 @@ function validateManifest(
         key === "id" ||
         key === "requirements" ||
         key === "build" ||
-        (allowDescription === true && key === "description")
+        ((allowDescription === true || requiresPaseo09) &&
+          key === "description")
       if (!allowed)
         findings.push(
           finding(

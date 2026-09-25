@@ -418,7 +418,7 @@ const RULE_GUIDANCE: Record<string, RuleGuidance> = {
   "manifest/unknown": {
     issue:
       "The manifest contains a key the current plugin format does not recognize. Paseo rejects unknown top-level keys.",
-    fix: "Remove the key. Supported top-level keys are `id`, `requirements`, and `build`.",
+    fix: "Remove the key. Supported top-level keys are `id`, `requirements`, and `build`, plus `description` when `requirements.paseo` admits only Paseo 0.9 or newer.",
   },
   "manifest/json": {
     issue: "The scanner could not parse `paseo-plugin.json`.",

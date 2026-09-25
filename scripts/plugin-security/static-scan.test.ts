@@ -74,6 +74,45 @@ describe("scanStaticFiles", () => {
     ).toBe(true)
   })
 
+  it("allows a manifest description only when the range requires Paseo 0.9", () => {
+    const descriptionFindings = (
+      manifest: Record<string, unknown>,
+      allowManifestDescription?: boolean
+    ) => {
+      const root = mkdtempSync(join(tmpdir(), "plugin-security-"))
+      writeFileSync(
+        join(root, "paseo-plugin.json"),
+        JSON.stringify({ id: "plugin", description: "A plugin", ...manifest })
+      )
+      writeFileSync(
+        join(root, "index.server.ts"),
+        "export default () => () => {}"
+      )
+      return scanStaticFiles({
+        root,
+        registryId: "plugin",
+        allowManifestDescription,
+      }).findings.filter(({ ruleId }) => ruleId === "unknown:description")
+    }
+
+    expect(descriptionFindings({ requirements: { paseo: ">=0.9.0" } })).toEqual(
+      []
+    )
+    expect(descriptionFindings({ requirements: { paseo: "^0.9.1" } })).toEqual(
+      []
+    )
+    expect(
+      descriptionFindings({ requirements: { paseo: ">=0.8.0" } })
+    ).toHaveLength(1)
+    expect(
+      descriptionFindings({ requirements: { paseo: ">=0.9.0-beta.1" } })
+    ).toHaveLength(1)
+    expect(descriptionFindings({})).toHaveLength(1)
+    expect(
+      descriptionFindings({ requirements: { paseo: ">=0.8.0" } }, true)
+    ).toEqual([])
+  })
+
   it("requires a manifest and recognizes legacy TSX entrypoints", () => {
     const missing = mkdtempSync(join(tmpdir(), "plugin-security-"))
     expect(
