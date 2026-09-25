@@ -341,7 +341,9 @@ function validateManifest(
         typeof paseo === "string" && paseo.trim().length > 0
           ? semver.validRange(paseo, { loose: false })
           : null
-      requiresPaseo09 = range !== null && !semver.intersects(range, "<0.9.0")
+      // minVersion (not intersects) so prerelease alternatives count.
+      const minimum = range ? semver.minVersion(range) : null
+      requiresPaseo09 = minimum !== null && semver.gte(minimum, "0.9.0")
       if (!range || !semver.intersects(range, ">=0.8.0"))
         findings.push(
           finding(

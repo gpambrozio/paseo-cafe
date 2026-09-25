@@ -107,6 +107,11 @@ describe("scanStaticFiles", () => {
     expect(
       descriptionFindings({ requirements: { paseo: ">=0.9.0-beta.1" } })
     ).toHaveLength(1)
+    expect(
+      descriptionFindings({
+        requirements: { paseo: "0.9.0-beta.1 || >=0.9.0" },
+      })
+    ).toHaveLength(1)
     expect(descriptionFindings({})).toHaveLength(1)
     expect(
       descriptionFindings({ requirements: { paseo: ">=0.8.0" } }, true)
